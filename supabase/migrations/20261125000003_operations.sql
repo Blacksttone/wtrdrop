@@ -1092,3 +1092,19 @@ begin
   perform public.refresh_prediction(c.id);
   return o;
 end $$;
+
+-- Re-evaluate alerts/prediction when a supplier edits thresholds or usage settings.
+create or replace function public.tg_customer_settings_changed() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.low_stock_threshold is distinct from old.low_stock_threshold
+     or new.critical_threshold is distinct from old.critical_threshold
+     or new.daily_consumption is distinct from old.daily_consumption
+     or new.safety_stock is distinct from old.safety_stock then
+    perform public.evaluate_stock_alert(new.id);
+    perform public.refresh_prediction(new.id);
+  end if;
+  return null;
+end $$;
+create trigger customers_settings_changed after update on public.customers
+  for each row execute function public.tg_customer_settings_changed();

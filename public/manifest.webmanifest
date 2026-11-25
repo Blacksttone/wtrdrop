@@ -1,0 +1,10 @@
+{
+  "name": "Waterdrop",
+  "short_name": "Waterdrop",
+  "description": "Never Run Out of Water.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b6bcb",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

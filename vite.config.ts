@@ -8,6 +8,8 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   build: {
+    // jsPDF is loaded on demand only when a bill/report PDF is downloaded.
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks(id: string) {

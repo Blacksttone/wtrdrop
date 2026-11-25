@@ -1,0 +1,5 @@
+{
+  "imports": { "@supabase/supabase-js": "npm:@supabase/supabase-js@2.119.2" },
+  "compilerOptions": { "strict": true, "lib": ["deno.window"] },
+  "lint": { "rules": { "exclude": ["no-explicit-any"] } }
+}
