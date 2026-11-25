@@ -14,6 +14,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { LevelPill } from "@/components/water/StockGauge";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useAction } from "@/lib/hooks";
+import { openExternal, siteUrl } from "@/lib/native";
 import { rpc } from "@/lib/supabase";
 import type { SupplierInvite } from "@/types/db";
 import { useCustomerList } from "./dialogs";
@@ -22,8 +23,8 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
   const supplier = useSupplier();
   const [invite, setInvite] = React.useState<SupplierInvite | null>(null);
   const create = useAction(() => rpc<SupplierInvite>("create_supplier_invite", { p_label: "Shared link", p_expires_in_days: 30 }), { onSuccess: setInvite });
-  const codeUrl = `${window.location.origin}/join?code=${supplier.business_code}`;
-  const url = invite ? `${window.location.origin}/join/${invite.token}` : codeUrl;
+  const codeUrl = `${siteUrl()}/join?code=${supplier.business_code}`;
+  const url = invite ? `${siteUrl()}/join/${invite.token}` : codeUrl;
   const copy = async (s: string) => { await navigator.clipboard.writeText(s); toast.success("Copied"); };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -40,8 +41,8 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
           </div>
           {!invite && <Button variant="outline" className="w-full" loading={create.isPending} onClick={() => create.mutate(undefined)}>Create a private 30-day invite link</Button>}
           {invite && <p className="text-xs text-muted-foreground">Private link expires {formatDate(invite.expires_at)}.</p>}
-          <Button className="w-full" asChild>
-            <a href={`https://wa.me/?text=${encodeURIComponent(`Order water from ${supplier.business_name} on Waterdrop: ${url}`)}`} target="_blank" rel="noreferrer">Share on WhatsApp</a>
+          <Button className="w-full" onClick={() => openExternal(`https://wa.me/?text=${encodeURIComponent(`Order water from ${supplier.business_name} on Waterdrop: ${url}`)}`)}>
+            Share on WhatsApp
           </Button>
         </div>
       </DialogContent>

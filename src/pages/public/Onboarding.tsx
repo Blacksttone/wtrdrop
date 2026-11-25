@@ -16,7 +16,7 @@ function Shell({ children, step }: { children: React.ReactNode; step: string }) 
   const { signOut } = useAuth();
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex h-16 max-w-2xl items-center justify-between px-4">
+      <header className="safe-top mx-auto flex min-h-16 max-w-2xl items-center justify-between px-4">
         <Logo size="sm" />
         <Button variant="ghost" size="sm" onClick={signOut}>Sign out</Button>
       </header>

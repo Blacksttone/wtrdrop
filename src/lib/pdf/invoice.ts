@@ -3,6 +3,7 @@
  * (supplier/customer snapshots are frozen at generation time, so the PDF
  * is a faithful rendering of an immutable invoice).
  */
+import { isNativeApp, saveOrShareFile } from "@/lib/native";
 import type { Invoice, InvoiceItem } from "@/types/db";
 
 const rupee = (n: number) => `Rs. ${Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -109,16 +110,15 @@ export async function buildInvoicePdf(invoice: Invoice, items: InvoiceItem[]): P
 
 export async function downloadInvoice(invoice: Invoice, items: InvoiceItem[]) {
   const blob = await buildInvoicePdf(invoice, items);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${invoice.invoice_number}.pdf`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  await saveOrShareFile(blob, `${invoice.invoice_number}.pdf`, `Water bill ${invoice.invoice_number}`);
 }
 
 export async function shareInvoice(invoice: Invoice, items: InvoiceItem[]) {
   const blob = await buildInvoicePdf(invoice, items);
+  if (isNativeApp) {
+    await saveOrShareFile(blob, `${invoice.invoice_number}.pdf`, `Water bill ${invoice.invoice_number}`);
+    return true;
+  }
   const file = new File([blob], `${invoice.invoice_number}.pdf`, { type: "application/pdf" });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare?.({ files: [file] })) {
@@ -139,5 +139,5 @@ export async function buildReportPdf(title: string, subtitle: string, columns: s
     startY: 78, head: [columns], body: body.map((r) => r.map(String)),
     headStyles: { fillColor: [11, 107, 203], fontSize: 8 }, styles: { fontSize: 8, cellPadding: 4 }, margin: { left: 40, right: 40 },
   });
-  doc.save(`${title.toLowerCase().replace(/\s+/g, "-")}.pdf`);
+  await saveOrShareFile(doc.output("blob"), `${title.toLowerCase().replace(/\s+/g, "-")}.pdf`, title);
 }

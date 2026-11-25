@@ -7,6 +7,7 @@ import { Logo, TAGLINE, TAMIL_TAGLINE } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { errorMessage } from "@/lib/errors";
+import { siteUrl } from "@/lib/native";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
         </div>
         <p className="text-sm text-sky-100">Accurate stock. On-time orders. Honest bills.</p>
       </div>
-      <div className="flex items-center justify-center p-6">
+      <div className="safe-top flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="mb-8 md:hidden"><Logo /></div>
           <h1 className="text-2xl font-bold">{title}</h1>
@@ -93,7 +94,7 @@ export function Signup() {
       password: form.password,
       options: {
         data: { full_name: form.full_name.trim(), phone: form.phone.trim(), role },
-        emailRedirectTo: `${window.location.origin}${next ?? "/home"}`,
+        emailRedirectTo: `${siteUrl()}${next ?? "/home"}`,
       },
     });
     setLoading(false);
@@ -153,7 +154,7 @@ export function ForgotPassword() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/reset-password` });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${siteUrl()}/reset-password` });
     setLoading(false);
     if (error) return toast.error(errorMessage(error));
     setSent(true);

@@ -14,9 +14,20 @@
     "test:watch": "vitest",
     "test:db": "bash scripts/db-test.sh",
     "deploy": "npm run build && wrangler deploy",
-    "preview:cf": "npm run build && wrangler dev"
+    "preview:cf": "npm run build && wrangler dev",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@radix-ui/react-dialog": "^1.3.1",
     "@radix-ui/react-slot": "^1.5.0",
     "@supabase/supabase-js": "^2.119.2",
@@ -36,6 +47,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.7",
     "@types/react": "^19.3.1",

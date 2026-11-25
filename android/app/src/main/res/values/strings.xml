@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Waterdrop</string>
+    <string name="title_activity_main">Waterdrop</string>
+    <string name="package_name">com.waterdrop.app</string>
+    <string name="custom_url_scheme">com.waterdrop.app</string>
+</resources>

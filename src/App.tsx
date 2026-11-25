@@ -1,14 +1,15 @@
 import {
   Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Truck, Users,
 } from "lucide-react";
-import { lazy, Suspense } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
 import { FullPageLoader, RequireAuth, RequireRole, RoleHome } from "./auth/guards";
 import { Logo } from "./components/brand/Logo";
 import { CustomerLayout } from "./components/layout/CustomerLayout";
 import { DashboardLayout, type NavItem } from "./components/layout/DashboardLayout";
 import { Button } from "./components/ui/button";
+import { initNativeApp } from "./lib/native";
 import { isSupabaseConfigured } from "./lib/supabase";
 
 const Landing = lazy(() => import("./pages/public/Landing"));
@@ -110,6 +111,8 @@ function ConfigMissing() {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+  useEffect(() => initNativeApp(() => navigate(-1)), [navigate]);
   if (!isSupabaseConfigured) return <ConfigMissing />;
   return (
     <Suspense fallback={<FullPageLoader />}>

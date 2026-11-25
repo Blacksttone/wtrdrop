@@ -8,12 +8,9 @@ export function toCsv(columns: string[], rows: (string | number | null | undefin
   return [columns, ...rows].map((r) => r.map(esc).join(",")).join("\r\n");
 }
 
-export function downloadCsv(filename: string, columns: string[], rows: (string | number | null | undefined)[][]) {
-  const blob = new Blob(["﻿" + toCsv(columns, rows)], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+export async function downloadCsv(filename: string, columns: string[], rows: (string | number | null | undefined)[][]) {
+  const { saveOrShareFile } = await import("./native");
+  // Leading BOM so Excel opens UTF-8 (Tamil names, ₹) correctly.
+  const blob = new Blob(["\uFEFF" + toCsv(columns, rows)], { type: "text/csv;charset=utf-8" });
+  await saveOrShareFile(blob, filename.endsWith(".csv") ? filename : `${filename}.csv`);
 }

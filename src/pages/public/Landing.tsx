@@ -15,7 +15,7 @@ const features = [
 export default function Landing() {
   return (
     <div className="min-h-screen bg-white">
-      <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
+      <header className="safe-top mx-auto flex min-h-16 max-w-6xl items-center justify-between px-4">
         <Logo />
         <div className="flex gap-2">
           <Button variant="ghost" asChild><Link to="/login">Sign in</Link></Button>

@@ -62,7 +62,7 @@ export function DashboardLayout({ nav, title, notificationsPath, banner }: {
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-slate-900/40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-card shadow-xl">
+          <div className="safe-top absolute inset-y-0 left-0 flex w-72 flex-col bg-card shadow-xl">
             <div className="flex h-16 items-center justify-between border-b px-5">
               <Logo size="sm" />
               <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded p-1 hover:bg-secondary"><X className="h-5 w-5" /></button>
@@ -76,7 +76,7 @@ export function DashboardLayout({ nav, title, notificationsPath, banner }: {
       )}
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-card/90 px-4 backdrop-blur lg:px-8">
+        <header className="safe-top sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b bg-card/90 px-4 backdrop-blur lg:px-8">
           <button className="rounded-lg p-2 hover:bg-secondary lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
             <Menu className="h-5 w-5" />
           </button>

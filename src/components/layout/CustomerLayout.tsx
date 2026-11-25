@@ -18,7 +18,7 @@ export function CustomerLayout() {
   const { customers, activeCustomer, setActiveCustomerId } = useAuth();
   return (
     <div className="min-h-screen pb-24 md:pb-8">
-      <header className="sticky top-0 z-30 border-b bg-card/90 backdrop-blur">
+      <header className="safe-top sticky top-0 z-30 border-b bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-3 px-4">
           <Logo size="sm" />
           {customers.length > 1 && (

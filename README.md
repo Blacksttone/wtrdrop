@@ -268,6 +268,35 @@ the redirect URLs and `APP_URL` to match.
 
 ---
 
+## Android app
+
+The Android app is the same React build wrapped with [Capacitor](https://capacitorjs.com) (`android/`,
+`capacitor.config.ts`, app id `com.waterdrop.app`). The web files ship inside the APK. The app talks to the
+same Supabase project as the website, so data is always in sync.
+
+In the app:
+- Bill PDFs and report CSV/PDFs open Android's share sheet (WhatsApp, Drive, Files) instead of downloading.
+- Invite links, QR codes and email links use `VITE_PUBLIC_SITE_URL` (the public website), never the app's
+  internal address.
+- The hardware back button closes dialogs, then goes back, then exits from a home screen.
+
+Build an APK locally (needs JDK 21 and the Android SDK, with `ANDROID_HOME` set):
+
+```bash
+npm run android:apk     # → android/app/build/outputs/apk/debug/app-debug.apk
+npm run android:open    # open in Android Studio (run on a phone / emulator, build a signed release)
+```
+
+GitHub Actions (`.github/workflows/android.yml`) builds a debug APK on every push. Download it from the
+run's **Artifacts**.
+
+**Publishing to Google Play:** create a Play Console developer account (one-time US$25). In Android Studio,
+use **Build → Generate Signed App Bundle** with a new upload keystore, and upload the `.aab`. Keep the
+keystore and its passwords safe and out of git. Change `appId` in `capacitor.config.ts` first if you want a
+different package name, because it can't change after the first upload.
+
+After changing web code, run `npm run android:sync` before rebuilding the app.
+
 ## Integrations that need API keys
 
 | Integration | Variables | Without it |
