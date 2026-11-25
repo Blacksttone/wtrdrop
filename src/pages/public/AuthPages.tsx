@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthProvider";
 import { Logo, TAGLINE, TAMIL_TAGLINE } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
+import { Field, Input, PasswordInput } from "@/components/ui/input";
 import { errorMessage } from "@/lib/errors";
 import { siteUrl } from "@/lib/native";
 import { supabase } from "@/lib/supabase";
@@ -57,10 +57,10 @@ export function Login() {
     <AuthShell title="Welcome back" subtitle="Sign in to your Waterdrop account">
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email" htmlFor="email">
-          <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input id="email" type="email" autoCapitalize="none" autoCorrect="off" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="Password" htmlFor="password">
-          <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput id="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <Button type="submit" className="w-full" size="lg" loading={loading}>Sign in</Button>
       </form>
@@ -135,10 +135,10 @@ export function Signup() {
           <Input id="phone" required type="tel" inputMode="tel" autoComplete="tel" placeholder="98765 43210" value={form.phone} onChange={set("phone")} />
         </Field>
         <Field label="Email" htmlFor="email">
-          <Input id="email" required type="email" autoComplete="email" value={form.email} onChange={set("email")} />
+          <Input id="email" required type="email" autoCapitalize="none" autoCorrect="off" autoComplete="email" value={form.email} onChange={set("email")} />
         </Field>
         <Field label="Password" htmlFor="password" hint="At least 8 characters">
-          <Input id="password" required type="password" autoComplete="new-password" minLength={8} value={form.password} onChange={set("password")} />
+          <PasswordInput id="password" required autoComplete="new-password" minLength={8} value={form.password} onChange={set("password")} />
         </Field>
         <Button type="submit" size="lg" className="w-full" loading={loading}>Create account</Button>
       </form>
@@ -163,7 +163,7 @@ export function ForgotPassword() {
     <AuthShell title="Reset password" subtitle={sent ? "If that email has an account, a reset link is on its way." : "We'll email you a reset link."}>
       {!sent && (
         <form onSubmit={submit} className="space-y-4">
-          <Field label="Email" htmlFor="email"><Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+          <Field label="Email" htmlFor="email"><Input id="email" type="email" autoCapitalize="none" autoCorrect="off" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
           <Button type="submit" className="w-full" loading={loading}>Send reset link</Button>
         </form>
       )}
@@ -189,7 +189,7 @@ export function ResetPassword() {
   return (
     <AuthShell title="Choose a new password">
       <form onSubmit={submit} className="space-y-4">
-        <Field label="New password" htmlFor="pw"><Input id="pw" type="password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+        <Field label="New password" htmlFor="pw"><PasswordInput id="pw" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
         <Button type="submit" className="w-full" loading={loading}>Update password</Button>
       </form>
     </AuthShell>

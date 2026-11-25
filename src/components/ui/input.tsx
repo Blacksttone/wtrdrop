@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,36 @@ Select.displayName = "Select";
 export const Label = ({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) => (
   <label className={cn("text-sm font-medium leading-none", className)} {...props} />
 );
+
+/** Password input with a show/hide toggle (helps avoid typing mistakes on phones). */
+export const PasswordInput = React.forwardRef<HTMLInputElement, Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">>(
+  ({ className, ...props }, ref) => {
+    const [visible, setVisible] = React.useState(false);
+    return (
+      <div className="relative">
+        <input
+          ref={ref}
+          type={visible ? "text" : "password"}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          className={cn(field, "h-10 pr-11", className)}
+          {...props}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground"
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+        >
+          {visible ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+        </button>
+      </div>
+    );
+  },
+);
+PasswordInput.displayName = "PasswordInput";
 
 interface FieldProps {
   label: string;

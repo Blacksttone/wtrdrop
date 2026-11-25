@@ -1,16 +1,20 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 /** Waterdrop mark: a droplet with a highlight and a ripple line. */
 export function LogoMark({ className, title = "Waterdrop" }: { className?: string; title?: string }) {
+  // Unique gradient id per instance: if another (hidden) logo on the page owned
+  // the shared id, browsers could not resolve it and this droplet rendered blank.
+  const gradientId = `wd-drop-${useId().replace(/:/g, "")}`;
   return (
     <svg viewBox="0 0 48 48" className={cn("h-8 w-8", className)} role="img" aria-label={title}>
       <defs>
-        <linearGradient id="wd-drop" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#38bdf8" />
           <stop offset="1" stopColor="#0b5cad" />
         </linearGradient>
       </defs>
-      <path d="M24 3C24 3 8 21.5 8 31.5a16 16 0 0 0 32 0C40 21.5 24 3 24 3Z" fill="url(#wd-drop)" />
+      <path d="M24 3C24 3 8 21.5 8 31.5a16 16 0 0 0 32 0C40 21.5 24 3 24 3Z" fill={`url(#${gradientId})`} />
       <path d="M16.5 32a7.5 7.5 0 0 0 7.5 7.5" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" fill="none" opacity="0.9" />
       <ellipse cx="19" cy="22" rx="2.2" ry="3.4" fill="#fff" opacity="0.35" transform="rotate(25 19 22)" />
     </svg>
