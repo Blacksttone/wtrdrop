@@ -66,6 +66,14 @@ select tests.eq((select count(*)::int from public.profiles), 2, 'customer sees o
 select tests.eq((select count(*)::int from public.notifications where user_id <> auth.uid()), 0, 'no foreign notifications visible');
 select tests.throws(format('select public.record_consumption(%L, 1)', (select v from tests.ctx where k = 'cA2')), 'Not allowed', 'customer cannot record consumption for another customer');
 select tests.throws(format('select public.place_order(%L, 1)', (select v from tests.ctx where k = 'cA2')), 'Not allowed', 'customer cannot order for another customer');
+select tests.throws(format('select public.apply_delivery_confirmation(%L, 99, null, false)', (select id from public.deliveries limit 1)),
+  'permission denied', 'internal confirmation function is not callable by clients');
+select tests.throws(format('select public.compute_prediction(%L)', (select v from tests.ctx where k = 'cA2')),
+  'permission denied', 'cannot read another customer''s prediction via internal helper');
+select tests.throws(format('select public.customer_balance(%L)', (select v from tests.ctx where k = 'cA2')),
+  'permission denied', 'cannot read another customer''s balance via internal helper');
+select tests.eq((public.get_customer_summary((select v from tests.ctx where k = 'cA')) -> 'prediction' ->> 'current_stock')::int, 4,
+  'public summary RPC still works for own account');
 select tests.throws(format('select public.record_delivery(%L, 1, 1)', (select v from tests.ctx where k = 'cA')), 'Supplier account required', 'customer cannot record deliveries');
 select tests.throws($$select public.record_payment((select id from public.customers limit 1), 1000, 'cash')$$, 'Supplier account required', 'customer cannot mark bills paid');
 update public.customers set can_price = 0;
@@ -80,7 +88,8 @@ reset role;
 -- Anonymous users get nothing
 select tests.logout(); set role anon;
 select tests.throws($$select count(*) from public.customers$$, 'permission denied', 'anon cannot read customers');
-select tests.throws($$select public.lookup_supplier('ABC')$$, 'Not authenticated', 'anon cannot look up suppliers');
+select tests.throws($$select public.lookup_supplier('ABC')$$, 'permission denied|Not authenticated', 'anon cannot look up suppliers');
+select tests.throws($$select public.place_order(gen_random_uuid(), 1)$$, 'permission denied', 'anon has no RPC access');
 reset role;
 
 -- Suspension

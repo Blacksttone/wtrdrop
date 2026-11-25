@@ -53,22 +53,22 @@ reset role;
 select tests.login((select v from tests.ctx where k = 'sup_user')); set role authenticated;
 select public.record_payment((select v from tests.ctx where k = 'customer'), 200, 'cash');
 select tests.eq((select status::text from public.invoices), 'partially_paid', 'partial payment → partially paid');
-select tests.eq(public.customer_balance((select v from tests.ctx where k = 'customer')), 280.00::numeric, 'outstanding ₹280');
+select tests.eq(tests.balance((select v from tests.ctx where k = 'customer')), 280.00::numeric, 'outstanding ₹280');
 select public.verify_payment((select v from tests.ctx where k = 'p_cust'), true);
 select tests.throws(format('select public.verify_payment(%L, true)', (select v from tests.ctx where k = 'p_cust')), 'already', 'cannot verify twice');
-select tests.eq(public.customer_balance((select v from tests.ctx where k = 'customer')), 180.00::numeric, 'outstanding ₹180 after verified UPI');
+select tests.eq(tests.balance((select v from tests.ctx where k = 'customer')), 180.00::numeric, 'outstanding ₹180 after verified UPI');
 select tests.throws(format('select public.record_payment(%L, 50, %L)', (select v from tests.ctx where k = 'customer'), 'online'),
   'payment gateway', 'online payments cannot be recorded manually');
 reset role;
 
 -- Gateway payment: only webhook confirmation counts, idempotent, amount-checked
 select public.create_gateway_payment((select v from tests.ctx where k = 'customer'), 80, 'razorpay', 'order_TEST1', (select v from tests.ctx where k = 'cust_user'));
-select tests.eq(public.customer_balance((select v from tests.ctx where k = 'customer')), 180.00::numeric, 'pending online payment not counted');
+select tests.eq(tests.balance((select v from tests.ctx where k = 'customer')), 180.00::numeric, 'pending online payment not counted');
 select tests.throws($$select public.confirm_gateway_payment('order_TEST1', 'pay_1', 99)$$, 'mismatch', 'amount mismatch rejected');
 select public.confirm_gateway_payment('order_TEST1', 'pay_1', 80);
 select public.confirm_gateway_payment('order_TEST1', 'pay_1', 80);
 select tests.eq((select count(*)::int from public.payments where status = 'succeeded'), 3, 'webhook retry does not double count');
-select tests.eq(public.customer_balance((select v from tests.ctx where k = 'customer')), 100.00::numeric, 'outstanding ₹100');
+select tests.eq(tests.balance((select v from tests.ctx where k = 'customer')), 100.00::numeric, 'outstanding ₹100');
 select tests.eq((select amount_paid from public.invoices), 380.00::numeric, 'invoice shows ₹380 paid');
 
 -- Next month: confirm d3 late (it belongs to the closed period) + a new delivery; chain balances
@@ -86,7 +86,7 @@ select tests.eq((select payments_received from public.invoices order by generate
 select tests.eq((select credits from public.invoices order by generated_at desc limit 1), 20.00::numeric, 'credits since last bill');
 select tests.eq((select current_charges from public.invoices order by generated_at desc limit 1), 240.00::numeric, 'late-confirmed 6 cans billed once');
 select tests.eq((select amount_due from public.invoices order by generated_at desc limit 1), 320.00::numeric, '480 + 240 − 380 − 20 = 320');
-select tests.eq(public.customer_balance((select v from tests.ctx where k = 'customer')), 320.00::numeric, 'account balance matches invoice chain');
+select tests.eq(tests.balance((select v from tests.ctx where k = 'customer')), 320.00::numeric, 'account balance matches invoice chain');
 select tests.eq((select count(*)::int from public.invoice_items where delivery_id = (select v from tests.ctx where k = 'd3')), 1, 'delivery billed exactly once');
 select tests.eq((select superseded_by is not null from public.invoices order by generated_at asc limit 1), true, 'old invoice superseded');
 

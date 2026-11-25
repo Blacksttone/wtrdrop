@@ -51,3 +51,8 @@ create or replace function tests.supplier_code(p_n int default 1) returns text l
   select business_code from public.suppliers order by created_at offset p_n - 1 limit 1;
 $$;
 grant execute on function tests.supplier_code(int) to authenticated;
+-- Test-only wrappers around internal helpers that clients may not call.
+create or replace function tests.local_date(p uuid) returns date language sql security definer as $$ select public.customer_local_date(p) $$;
+create or replace function tests.balance(p uuid) returns numeric language sql security definer as $$ select public.customer_balance(p) $$;
+create or replace function tests.prediction(p uuid) returns jsonb language sql security definer as $$ select public.compute_prediction(p) $$;
+grant execute on function tests.local_date(uuid), tests.balance(uuid), tests.prediction(uuid) to authenticated;

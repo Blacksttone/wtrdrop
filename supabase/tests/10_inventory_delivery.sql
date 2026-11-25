@@ -48,7 +48,7 @@ select tests.eq((select current_stock from public.customer_stock), 13, 'stock st
 select tests.eq((select discrepancy from public.deliveries), -2, 'shortage of 2 vs expected recorded');
 
 -- Daily consumption 2 cans: day 1 → 11, day 2 → 9
-select public.record_consumption((select v from tests.ctx where k = 'customer'), 2, public.customer_local_date((select v from tests.ctx where k = 'customer')) - 1);
+select public.record_consumption((select v from tests.ctx where k = 'customer'), 2, tests.local_date((select v from tests.ctx where k = 'customer')) - 1);
 select tests.eq((select current_stock from public.customer_stock), 11, 'after one day = 11');
 select public.record_consumption((select v from tests.ctx where k = 'customer'), 2);
 select tests.eq((select current_stock from public.customer_stock), 9, 'after two days = 9');
@@ -77,21 +77,21 @@ select tests.eq((select sum(quantity)::int from public.inventory_transactions), 
 select tests.eq((select balance_after from public.inventory_transactions order by created_at desc limit 1), 9, 'balance_after trail correct');
 
 -- Prediction: 3 days of history needed; with 2 days falls back to configured 2/day
-select tests.eq((public.compute_prediction((select v from tests.ctx where k = 'customer')) ->> 'basis'), 'configured', 'fallback to configured consumption');
-select tests.eq((public.compute_prediction((select v from tests.ctx where k = 'customer')) ->> 'days_remaining')::numeric, 4.5, '9 cans / 2 per day = 4.5 days');
-select tests.eq((public.compute_prediction((select v from tests.ctx where k = 'customer')) ->> 'predicted_empty_date')::date,
-  public.customer_local_date((select v from tests.ctx where k = 'customer')) + 4, 'predicted empty date = today + 4');
+select tests.eq((tests.prediction((select v from tests.ctx where k = 'customer')) ->> 'basis'), 'configured', 'fallback to configured consumption');
+select tests.eq((tests.prediction((select v from tests.ctx where k = 'customer')) ->> 'days_remaining')::numeric, 4.5, '9 cans / 2 per day = 4.5 days');
+select tests.eq((tests.prediction((select v from tests.ctx where k = 'customer')) ->> 'predicted_empty_date')::date,
+  tests.local_date((select v from tests.ctx where k = 'customer')) + 4, 'predicted empty date = today + 4');
 
 -- Consuming more than available: stock floors at 0 with a stockout event
 select tests.login((select v from tests.ctx where k = 'cust_user'));
 set role authenticated;
-select public.record_consumption((select v from tests.ctx where k = 'customer'), 7, public.customer_local_date((select v from tests.ctx where k = 'customer')) - 2);
+select public.record_consumption((select v from tests.ctx where k = 'customer'), 7, tests.local_date((select v from tests.ctx where k = 'customer')) - 2);
 select tests.eq((select current_stock from public.customer_stock), 2, 'stock 9 - 7 = 2');
 select tests.eq((select alert_level::text from public.customer_stock), 'low', 'low alert state at 2 cans (threshold 3)');
 select tests.eq((select count(*)::int from public.notifications where notification_type = 'low_stock'), 1, 'one low-stock alert');
 select public.record_consumption((select v from tests.ctx where k = 'customer'), 6);
 select tests.eq((select current_stock from public.customer_stock), 0, 'stock never negative (today 2 → 6 with only 2 cans left)');
-select tests.eq((select unmet_quantity from public.consumption_records where consumption_date = public.customer_local_date((select v from tests.ctx where k = 'customer'))), 2,
+select tests.eq((select unmet_quantity from public.consumption_records where consumption_date = tests.local_date((select v from tests.ctx where k = 'customer'))), 2,
   'unmet demand of 2 recorded');
 reset role;
 select tests.eq((select count(*)::int from public.inventory_transactions where transaction_type = 'stockout'), 1, 'stockout event recorded');
@@ -200,10 +200,10 @@ select tests.eq((select confirmed_by_supplier from public.deliveries where custo
 -- Prediction with lead time: 2 cans, 2/day, lead 1 → order now
 update public.customer_stock set current_stock = 2 where customer_id = (select v from tests.ctx where k = 'customer3');
 update public.customers set daily_consumption = 2, safety_stock = 2 where id = (select v from tests.ctx where k = 'customer3');
-select tests.eq((public.compute_prediction((select v from tests.ctx where k = 'customer3')) ->> 'order_now')::boolean, true,
+select tests.eq((tests.prediction((select v from tests.ctx where k = 'customer3')) ->> 'order_now')::boolean, true,
   '2 cans @ 2/day with 1-day lead time → order now');
-select tests.eq((public.compute_prediction((select v from tests.ctx where k = 'customer3')) ->> 'recommended_order_quantity')::int, 2,
+select tests.eq((tests.prediction((select v from tests.ctx where k = 'customer3')) ->> 'recommended_order_quantity')::int, 2,
   'recommended = 2*1 lead + 2 safety - 2 stock = 2');
 update public.customers set daily_consumption = 0 where id = (select v from tests.ctx where k = 'customer3');
-select tests.eq((public.compute_prediction((select v from tests.ctx where k = 'customer3')) ->> 'days_remaining'), null,
+select tests.eq((tests.prediction((select v from tests.ctx where k = 'customer3')) ->> 'days_remaining'), null,
   'no consumption data → no false prediction');
