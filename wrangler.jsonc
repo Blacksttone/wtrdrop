@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Waterdrop frontend on Cloudflare Workers (static assets only — no server code).
+  // Supabase handles the API, auth, database and Edge Functions.
+  "name": "waterdrop",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./dist",
+    // Serve index.html for client-side routes like /app/bills or /join/<token>
+    "not_found_handling": "single-page-application"
+  }
+}

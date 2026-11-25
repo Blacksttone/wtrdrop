@@ -23,7 +23,7 @@ confirmed they received.
 - **Scheduling:** `pg_cron` (plus an HTTP job endpoint for any external scheduler)
 - **PDF:** jsPDF + jspdf-autotable (loaded on demand)
 - **Email:** Resend · **WhatsApp (optional):** Meta WhatsApp Cloud API · **Payments:** Razorpay
-- **Hosting:** Vercel (static SPA) + Supabase
+- **Hosting:** Cloudflare Workers (static assets, SPA routing) + Supabase
 
 ## Repository layout
 
@@ -166,7 +166,7 @@ Consuming 2 a day gives **11**, then **9**. If the customer confirms only 7 → 
 - The **service-role key** lives only in Edge Function secrets. The browser only ever gets the anon key.
 - **Audit log** covering registrations, connections, deliveries, confirmations, adjustments, stock movements,
   orders, invoices, payments, credit notes and admin actions.
-- CSV exports neutralise spreadsheet-formula injection. Vercel serves security headers (see `vercel.json`).
+- CSV exports neutralise spreadsheet-formula injection. Cloudflare serves security headers (see `public/_headers`).
 
 Customers can connect to a supplier **only** with a supplier code, an invite link or a QR code. Invites can
 expire, be revoked and be limited in uses.
@@ -200,7 +200,7 @@ Edge Functions and their secrets:
 
 ```bash
 supabase secrets set RESEND_API_KEY=... EMAIL_FROM="Waterdrop <alerts@yourdomain.com>" \
-  CRON_SECRET=$(openssl rand -hex 32) APP_URL=https://your-app.vercel.app \
+  CRON_SECRET=$(openssl rand -hex 32) APP_URL=https://waterdrop.<your-subdomain>.workers.dev \
   PAYMENT_GATEWAY_KEY=rzp_live_... PAYMENT_GATEWAY_SECRET=... PAYMENT_GATEWAY_WEBHOOK_SECRET=... \
   WHATSAPP_PROVIDER_API_KEY=... WHATSAPP_PHONE_NUMBER_ID=...      # WhatsApp is optional
 supabase functions deploy dispatch-notifications --no-verify-jwt
@@ -218,7 +218,7 @@ select vault.create_secret('https://<project-ref>.supabase.co/functions/v1', 'wd
 select vault.create_secret('<the same CRON_SECRET>', 'wd_cron_secret');
 ```
 
-**Auth settings:** set the Site URL to your Vercel domain, and add `https://<domain>/reset-password` and
+**Auth settings:** set the Site URL to your Cloudflare domain, and add `https://<domain>/reset-password` and
 `https://<domain>/home` to the redirect URLs.
 
 **Make yourself platform admin** (admins can't self-register):
@@ -237,15 +237,35 @@ curl -X POST https://<project-ref>.supabase.co/functions/v1/run-scheduled-jobs \
   -H "x-cron-secret: $CRON_SECRET" -d '{"jobs":["auto_consumption","predictions","billing","reminders"]}'
 ```
 
-### 2. Vercel
+### 2. Cloudflare
 
-1. Import the repository in Vercel. The framework preset is Vite, and `vercel.json` sets the build, SPA
-   rewrites and security headers.
-2. Environment variables (public values only):
+The frontend is a static site served by Cloudflare Workers static assets. `wrangler.jsonc` configures
+single-page-app routing, and `public/_headers` sets the security and caching headers. There is no server code
+on Cloudflare: the API, auth and database are all Supabase.
+
+**Option A — Git integration (recommended):**
+1. Cloudflare dashboard → **Workers & Pages → Create → Import a repository** → pick this repo.
+2. Build command `npm run build`, deploy command `npx wrangler deploy`.
+3. Under **Settings → Build → Variables**, add the *build* variables (Vite bakes them in at build time). Use
+   public values only:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
    - optionally `VITE_PAYMENT_GATEWAY_KEY` (the Razorpay **key id**), which shows the "Pay online" button
-3. Deploy.
+4. Every push to the production branch deploys. Other branches get preview URLs.
+
+**Option B — from your machine:**
+
+```bash
+npx wrangler login
+cp .env.example .env.production.local   # fill the VITE_* values
+npm run deploy                          # build + wrangler deploy
+```
+
+Your app is then live at `https://waterdrop.<your-subdomain>.workers.dev`. To use your own domain, go to
+**Workers → waterdrop → Settings → Domains & Routes → Add custom domain**. Then update the Supabase Site URL,
+the redirect URLs and `APP_URL` to match.
+
+`npm run preview:cf` runs the production build locally in Cloudflare's runtime.
 
 ---
 

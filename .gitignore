@@ -6,7 +6,8 @@ coverage
 !.env.example
 *.local
 .DS_Store
-.vercel
+.wrangler
+.dev.vars
 supabase/.temp
 supabase/.branches
 .tmp-pg

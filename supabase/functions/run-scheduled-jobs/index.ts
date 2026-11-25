@@ -1,4 +1,4 @@
-// HTTP entry point for schedulers other than pg_cron (e.g. Vercel Cron, GitHub
+// HTTP entry point for schedulers other than pg_cron (e.g. Cloudflare Cron Triggers, GitHub
 // Actions). Every job is idempotent, so retries and overlaps are safe.
 //   POST /run-scheduled-jobs   { "jobs": ["auto_consumption", "predictions", "billing", "reminders"] }
 //   header: x-cron-secret: <CRON_SECRET>

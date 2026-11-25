@@ -13,7 +13,7 @@ major_version = 17
 
 [auth]
 site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://localhost:5173", "https://*.vercel.app"]
+additional_redirect_urls = ["http://localhost:5173", "https://*.workers.dev", "https://*.pages.dev"]
 enable_signup = true
 minimum_password_length = 8
 
