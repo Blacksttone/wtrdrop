@@ -103,7 +103,7 @@ function ConfigMissing() {
       <div className="max-w-md rounded-2xl border bg-card p-6">
         <Logo />
         <h1 className="mt-4 text-lg font-bold">Connect Supabase to start</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Copy <code>.env.example</code> to <code>.env.local</code> and set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>, then restart the dev server. See README.md.</p>
+        <p className="mt-2 text-sm text-muted-foreground">This build has no Supabase settings. Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> in <code>.env.production</code> (or as <b>build</b> variables on your host) and rebuild. For local development use <code>.env.local</code>. See README.md.</p>
       </div>
     </div>
   );

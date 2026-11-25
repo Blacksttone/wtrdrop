@@ -246,11 +246,10 @@ on Cloudflare: the API, auth and database are all Supabase.
 **Option A — Git integration (recommended):**
 1. Cloudflare dashboard → **Workers & Pages → Create → Import a repository** → pick this repo.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`.
-3. Under **Settings → Build → Variables**, add the *build* variables (Vite bakes them in at build time). Use
-   public values only:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - optionally `VITE_PAYMENT_GATEWAY_KEY` (the Razorpay **key id**), which shows the "Pay online" button
+3. The public Supabase URL and anon key are committed in `.env.production`, so builds work without any
+   dashboard settings. To point a build at another project, override them under **Settings → Build →
+   Variables and secrets** (build variables override `.env.production`). Optional build variables (Vite bakes them in at build time; public values only):
+   - `VITE_PAYMENT_GATEWAY_KEY` (the Razorpay **key id**), which shows the "Pay online" button
 4. Every push to the production branch deploys. Other branches get preview URLs.
 
 **Option B — from your machine:**
