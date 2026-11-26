@@ -1,5 +1,5 @@
 import {
-  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Truck, UserCog, Users,
+  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Smartphone, Truck, UserCog, Users,
 } from "lucide-react";
 import { lazy, Suspense, useEffect } from "react";
 import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import { useAuth } from "./auth/AuthProvider";
 import { FullPageLoader, RequireAuth, RequireRole, RequireSupplierRole, RoleHome } from "./auth/guards";
 import { Logo } from "./components/brand/Logo";
 import { CustomerLayout } from "./components/layout/CustomerLayout";
+import { UpdatePrompt } from "./components/layout/UpdatePrompt";
 import { DashboardLayout, type NavItem } from "./components/layout/DashboardLayout";
 import { Button } from "./components/ui/button";
 import { initNativeApp, isNativeApp } from "./lib/native";
@@ -51,6 +52,7 @@ const AdminSuppliers = lazy(() => Adm().then((m) => ({ default: m.AdminSuppliers
 const AdminCustomers = lazy(() => Adm().then((m) => ({ default: m.AdminCustomers })));
 const AdminPlans = lazy(() => Adm().then((m) => ({ default: m.AdminPlans })));
 const AdminActivity = lazy(() => Adm().then((m) => ({ default: m.AdminActivity })));
+const AdminAppUpdates = lazy(() => import("./pages/admin/AppUpdates"));
 
 type Role = "owner" | "manager" | "delivery";
 const ALL: Role[] = ["owner", "manager", "delivery"];
@@ -79,6 +81,7 @@ const adminNav: NavItem[] = [
   { to: "/admin/suppliers", label: "Suppliers", icon: Building2 },
   { to: "/admin/customers", label: "Customers", icon: Users },
   { to: "/admin/plans", label: "Plans", icon: Package },
+  { to: "/admin/app-updates", label: "App updates", icon: Smartphone },
   { to: "/admin/activity", label: "System activity", icon: Activity },
 ];
 
@@ -142,6 +145,7 @@ export default function App() {
   if (!isSupabaseConfigured) return <ConfigMissing />;
   return (
     <Suspense fallback={<FullPageLoader />}>
+      {isNativeApp && <UpdatePrompt />}
       <Routes>
         <Route path="/" element={isNativeApp ? <Navigate to="/home" replace /> : <HomeOrLanding />} />
         <Route path="/login" element={<Login />} />
@@ -199,6 +203,7 @@ export default function App() {
               <Route path="customers" element={<AdminCustomers />} />
               <Route path="plans" element={<AdminPlans />} />
               <Route path="activity" element={<AdminActivity />} />
+              <Route path="app-updates" element={<AdminAppUpdates />} />
               <Route path="notifications" element={<Notifications />} />
             </Route>
           </Route>

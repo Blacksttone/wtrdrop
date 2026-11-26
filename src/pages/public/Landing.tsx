@@ -1,7 +1,8 @@
-import { BellRing, CalendarClock, CheckCircle2, FileText, ShieldCheck, Truck } from "lucide-react";
+import { BellRing, CalendarClock, CheckCircle2, Download, FileText, ShieldCheck, Truck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Logo, LogoMark, TAGLINE, TAMIL_TAGLINE } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
+import { formatSize, useLatestRelease } from "@/lib/appUpdate";
 
 const features = [
   { icon: CheckCircle2, title: "Customer-confirmed deliveries", text: "Stock only increases by the cans the customer actually received. Shortages are recorded automatically." },
@@ -13,6 +14,7 @@ const features = [
 ];
 
 export default function Landing() {
+  const release = useLatestRelease();
   return (
     <div className="min-h-screen bg-white">
       <header className="safe-top mx-auto flex min-h-16 max-w-6xl items-center justify-between px-4">
@@ -40,6 +42,11 @@ export default function Landing() {
                 <Link to="/signup?role=supplier">I supply water</Link>
               </Button>
             </div>
+            {release.data && (
+              <a href={release.data.download_url} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-900/40">
+                <Download className="h-4 w-4" /> Download Android app · v{release.data.version_name}{release.data.file_size ? ` · ${formatSize(release.data.file_size)}` : ""}
+              </a>
+            )}
           </div>
           <div className="relative mx-auto w-full max-w-sm">
             <div className="rounded-3xl bg-white p-6 shadow-2xl">
