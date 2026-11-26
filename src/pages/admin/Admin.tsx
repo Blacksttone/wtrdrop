@@ -96,7 +96,7 @@ export function AdminSuppliers() {
   );
 }
 
-interface AdminCustomerRow { id: string; customer_name: string; phone: string | null; supplier_name: string; has_app: boolean; user_id: string | null; user_disabled: boolean; status: string; current_stock: number; balance: number; created_at: string }
+interface AdminCustomerRow { id: string; customer_name: string; phone: string | null; supplier_name: string; has_app: boolean; user_id: string | null; user_disabled: boolean; status: string; current_stock: number; balance: number; created_at: string; account_name: string | null; account_type: string | null; branch_name: string | null }
 
 export function AdminCustomers() {
   const [q, setQ] = React.useState("");
@@ -118,7 +118,7 @@ export function AdminCustomers() {
             <TBody>
               {list.data.map((r) => (
                 <TR key={r.id}>
-                  <TD className="font-medium">{r.customer_name}<div className="text-xs text-muted-foreground">{r.phone}</div></TD>
+                  <TD className="font-medium">{r.customer_name}<div className="text-xs text-muted-foreground">{r.phone}</div>{r.account_name && <div className="text-xs text-muted-foreground">{r.account_name} · {r.account_type}{r.branch_name ? ` · ${r.branch_name}` : ""}</div>}</TD>
                   <TD>{r.supplier_name}</TD>
                   <TD>{r.current_stock}</TD>
                   <TD className="text-right">{formatMoney(r.balance)}</TD>

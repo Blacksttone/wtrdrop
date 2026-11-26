@@ -41,12 +41,14 @@ export const useConsumption = (customerId: string, days = 30) =>
     queryFn: () => rows<ConsumptionRecord>(supabase.from("consumption_records").select("*").eq("customer_id", customerId).order("consumption_date", { ascending: false }).limit(days)),
   });
 
-export const useInvoices = (scope: { customerId?: string; supplierId?: string }) =>
+export const useInvoices = (scope: { customerId?: string; customerIds?: string[]; supplierId?: string }) =>
   useQuery({
-    queryKey: qk.invoices(scope.customerId ?? scope.supplierId ?? "all"),
+    queryKey: qk.invoices(scope.customerIds?.join(",") ?? scope.customerId ?? scope.supplierId ?? "all"),
+    enabled: !scope.customerIds || scope.customerIds.length > 0,
     queryFn: () => {
       let q = supabase.from("invoices").select("*, customers(customer_name)").order("generated_at", { ascending: false }).limit(500);
-      if (scope.customerId) q = q.eq("customer_id", scope.customerId);
+      if (scope.customerIds) q = q.in("customer_id", scope.customerIds);
+      else if (scope.customerId) q = q.eq("customer_id", scope.customerId);
       if (scope.supplierId) q = q.eq("supplier_id", scope.supplierId);
       return rows<Invoice>(q);
     },
@@ -56,12 +58,14 @@ export async function fetchInvoiceItems(invoiceId: string) {
   return rows<InvoiceItem>(supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId).order("item_date"));
 }
 
-export const usePayments = (scope: { customerId?: string; supplierId?: string }) =>
+export const usePayments = (scope: { customerId?: string; customerIds?: string[]; supplierId?: string }) =>
   useQuery({
-    queryKey: qk.payments(scope.customerId ?? scope.supplierId ?? "all"),
+    queryKey: qk.payments(scope.customerIds?.join(",") ?? scope.customerId ?? scope.supplierId ?? "all"),
+    enabled: !scope.customerIds || scope.customerIds.length > 0,
     queryFn: () => {
       let q = supabase.from("payments").select("*, customers(customer_name)").order("created_at", { ascending: false }).limit(500);
-      if (scope.customerId) q = q.eq("customer_id", scope.customerId);
+      if (scope.customerIds) q = q.in("customer_id", scope.customerIds);
+      else if (scope.customerId) q = q.eq("customer_id", scope.customerId);
       if (scope.supplierId) q = q.eq("supplier_id", scope.supplierId);
       return rows<Payment>(q);
     },
@@ -76,3 +80,17 @@ export const useSupplierSettings = (supplierId: string) =>
       return data as SupplierSettings;
     },
   });
+
+/** Branch ids billed together with this branch (its head branch and every branch that bills to it). */
+export const useBillingGroup = (c: { id: string; bill_to_customer_id: string | null }) => {
+  const head = c.bill_to_customer_id ?? c.id;
+  const q = useQuery({
+    queryKey: ["billing-group", head],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("customers").select("id").or(`id.eq.${head},bill_to_customer_id.eq.${head}`);
+      if (error) throw error;
+      return (data ?? []).map((r) => r.id as string);
+    },
+  });
+  return { head, ids: q.data ?? [], isChild: Boolean(c.bill_to_customer_id), loaded: q.isSuccess };
+};

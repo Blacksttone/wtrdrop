@@ -49,10 +49,14 @@ select tests.throws(format('select public.connect_to_supplier(%L, %L, %L, null, 
   '8 lake rd, anna nagar', tests.supplier_code(1), (select v from tests.ctx where k = 'acc')), 'already connected', 'same address cannot be added twice');
 insert into tests.ctx select 'req3', (public.request_supplier_connection((select v from tests.ctx where k = 'acc'), (select v from tests.ctx where k = 'sid2'),
   'Raja', '9400000012', '3 Station Rd, Velachery', 'Velachery branch')).id;
+select tests.eq((select count(*)::int from public.suppliers where id = (select v from tests.ctx where k = 'sid2')), 1,
+  'customer can read a supplier they have only requested');
 reset role;
 select tests.eq((select bill_to_customer_id from public.customers where id = (select v from tests.ctx where k = 'b2')),
   (select v from tests.ctx where k = 'b1'), 'second branch with same supplier bills to the head branch');
 select tests.login((select v from tests.ctx where k = 'sup2')); set role authenticated;
+select tests.eq((select count(*)::int from public.customer_accounts where id = (select v from tests.ctx where k = 'acc')), 1,
+  'supplier can read the account behind a pending request');
 select tests.throws(format('select public.decide_connection_request(%L, false)', (select v from tests.ctx where k = 'req3')), 'reason', 'rejection needs a reason');
 select public.decide_connection_request((select v from tests.ctx where k = 'req3'), false, 'We do not deliver to Station Road yet');
 select tests.eq((select count(*)::int from public.customers), 0, 'other supplier cannot see this account''s branches');

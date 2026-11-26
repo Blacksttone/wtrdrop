@@ -21,6 +21,7 @@ function BusinessCard() {
   const initial = () => ({
     business_name: supplier.business_name, owner_name: supplier.owner_name, phone: supplier.phone, email: supplier.email ?? "",
     address: supplier.address, delivery_area: supplier.delivery_area ?? "", ...supplier.billing_info,
+    listed: supplier.listed === false ? "no" : "yes",
   } as Record<string, string>);
   const [f, setF] = React.useState(initial);
   const [logo, setLogo] = React.useState<File | null>(null);
@@ -29,7 +30,7 @@ function BusinessCard() {
     const billing_info = Object.fromEntries(["gstin", "upi_id", "bank_name", "account_number", "ifsc"].map((k) => [k, (f[k] ?? "").trim()]).filter(([, v]) => v));
     const { error } = await supabase.from("suppliers").update({
       business_name: f.business_name, owner_name: f.owner_name, phone: f.phone, email: f.email || null, address: f.address,
-      delivery_area: f.delivery_area || null, billing_info, logo_url,
+      delivery_area: f.delivery_area || null, billing_info, logo_url, listed: f.listed !== "no",
     }).eq("id", supplier.id);
     if (error) throw error;
   }, { success: "Business details saved", onSuccess: () => refresh() });
@@ -44,6 +45,13 @@ function BusinessCard() {
         <Field label="Email" htmlFor="em"><Input id="em" value={f.email} onChange={set("email")} /></Field>
         <Field label="Address" htmlFor="ad" className="sm:col-span-2"><Textarea id="ad" value={f.address} onChange={set("address")} /></Field>
         <Field label="Delivery area" htmlFor="da" className="sm:col-span-2"><Input id="da" value={f.delivery_area} onChange={set("delivery_area")} /></Field>
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary p-3 sm:col-span-2">
+          <div>
+            <p className="text-sm font-semibold">Show my business in customer search</p>
+            <p className="text-xs text-muted-foreground">New customers can find you by name or area and send a request. You accept or decline each one.</p>
+          </div>
+          <Switch id="listed" label="Show my business in customer search" checked={f.listed !== "no"} onChange={(v) => setF({ ...f, listed: v ? "yes" : "no" })} />
+        </div>
         <Field label="UPI ID" htmlFor="upi"><Input id="upi" value={f.upi_id ?? ""} onChange={set("upi_id")} /></Field>
         <Field label="GSTIN" htmlFor="gst"><Input id="gst" value={f.gstin ?? ""} onChange={set("gstin")} /></Field>
         <Field label="Bank name" htmlFor="bk"><Input id="bk" value={f.bank_name ?? ""} onChange={set("bank_name")} /></Field>

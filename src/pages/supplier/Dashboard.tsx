@@ -11,6 +11,7 @@ import type { StockLevel } from "@/lib/domain/stock";
 import { formatDate, formatMoney } from "@/lib/format";
 import { rpc } from "@/lib/supabase";
 import type { SupplierDashboard as Dash } from "@/types/db";
+import { useConnectionRequests } from "./Customers";
 
 function ListCard({ title, to, empty, children, count }: { title: string; to: string; empty: string; children: React.ReactNode; count: number }) {
   return (
@@ -27,6 +28,8 @@ function ListCard({ title, to, empty, children, count }: { title: string; to: st
 export default function SupplierDashboard() {
   const supplier = useSupplier();
   const canManage = useCanManage();
+  const requests = useConnectionRequests();
+  const pendingRequests = requests.data?.length ?? 0;
   const { data: d, isLoading, error, refetch } = useQuery({ queryKey: ["supplier-dashboard"], queryFn: () => rpc<Dash>("get_supplier_dashboard"), refetchInterval: 60_000 });
   if (isLoading) return <LoadingState rows={6} />;
   if (error || !d) return <ErrorState error={error} onRetry={refetch} />;
@@ -37,6 +40,13 @@ export default function SupplierDashboard() {
         description={`${supplier.business_name} · Supplier code ${supplier.business_code} · ${formatDate(d.today, "EEEE, d MMM")}`}
         actions={<><Button asChild variant="outline"><Link to="/supplier/orders"><ClipboardList /> Orders</Link></Button><Button asChild><Link to="/supplier/deliveries?new=1"><Truck /> Record delivery</Link></Button></>}
       />
+      {pendingRequests > 0 && (
+        <Link to="/supplier/customers?tab=requests" className="mb-4 flex items-center gap-3 rounded-xl border border-primary/40 bg-secondary p-3">
+          <Users className="h-5 w-5 text-primary" />
+          <span className="flex-1 text-sm font-semibold">{pendingRequests} new customer request{pendingRequests === 1 ? "" : "s"} waiting for you</span>
+          <ArrowRight className="h-4 w-4 text-primary" />
+        </Link>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Customers" value={d.total_customers} icon={Users} />
         <StatCard label="Today's orders" value={d.todays_orders} hint={`${d.pending_orders} pending response`} icon={ClipboardList} tone={d.pending_orders ? "low" : "default"} />

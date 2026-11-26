@@ -13,10 +13,11 @@ import { errorMessage } from "@/lib/errors";
 import { formatDate, formatMoney, titleCase } from "@/lib/format";
 import { useAction } from "@/lib/hooks";
 import { downloadInvoice, shareInvoice } from "@/lib/pdf/invoice";
-import { fetchInvoiceItems, useCustomerSummary, useInvoices, usePayments } from "@/lib/queries";
+import { fetchInvoiceItems, useBillingGroup, useCustomerSummary, useInvoices, usePayments } from "@/lib/queries";
 import { rpc, supabase } from "@/lib/supabase";
 import type { Invoice, InvoiceItem } from "@/types/db";
 import { payOnline, paymentGatewayEnabled } from "./payOnline";
+import { groupItemsByBranch } from "@/lib/invoiceBranches";
 
 export function InvoiceDetail({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const items = useQuery({ queryKey: ["invoice-items", invoice.id], queryFn: () => fetchInvoiceItems(invoice.id) });
@@ -31,15 +32,26 @@ export function InvoiceDetail({ invoice, onClose }: { invoice: Invoice; onClose:
       <DialogContent title={`Bill ${invoice.invoice_number}`} description={`${formatDate(invoice.billing_period_start)} – ${formatDate(invoice.billing_period_end)}`} className="sm:max-w-2xl">
         <div className="flex items-center justify-between"><StatusBadge status={invoice.status} /><span className="text-sm text-muted-foreground">Due {formatDate(invoice.due_date)}</span></div>
         {items.isLoading ? <LoadingState rows={2} /> : (
-          <ul className="mt-4 divide-y rounded-lg border text-sm">
-            {(items.data ?? []).map((it) => (
-              <li key={it.id} className="flex justify-between gap-3 p-3">
-                <div><p className="font-medium">{formatDate(it.item_date, "d MMM")}</p><p className="text-xs text-muted-foreground">{it.description}</p></div>
-                <div className="text-right"><p>{it.quantity} × {formatMoney(it.unit_price)}</p><p className="font-semibold">{formatMoney(it.amount)}</p></div>
-              </li>
+          <div className="mt-4 space-y-3">
+            {groupItemsByBranch(invoice, items.data ?? []).map((sec) => (
+              <div key={sec.branch ?? "all"}>
+                {sec.branch && (
+                  <div className="mb-1 flex justify-between px-1 text-sm font-semibold">
+                    <span>{sec.branch}</span><span>{sec.quantity} cans · {formatMoney(sec.amount)}</span>
+                  </div>
+                )}
+                <ul className="divide-y rounded-lg border text-sm">
+                  {sec.items.map((it) => (
+                    <li key={it.id} className="flex justify-between gap-3 p-3">
+                      <div><p className="font-medium">{formatDate(it.item_date, "d MMM")}</p><p className="text-xs text-muted-foreground">{it.shortDescription}</p></div>
+                      <div className="text-right"><p>{it.quantity} × {formatMoney(it.unit_price)}</p><p className="font-semibold">{formatMoney(it.amount)}</p></div>
+                    </li>
+                  ))}
+                  {!sec.items.length && <li className="p-3 text-muted-foreground">No deliveries in this period.</li>}
+                </ul>
+              </div>
             ))}
-            {!items.data?.length && <li className="p-3 text-muted-foreground">No deliveries in this period.</li>}
-          </ul>
+          </div>
         )}
         <dl className="mt-4 space-y-1.5 text-sm">
           {[
@@ -110,13 +122,16 @@ function PayDialog({ outstanding, invoiceId, onClose }: { outstanding: number; i
 export default function BillsPage() {
   const customer = useCustomer();
   const summary = useCustomerSummary(customer.id);
-  const { data, isLoading, error, refetch } = useInvoices({ customerId: customer.id });
+  const group = useBillingGroup(customer);
+  const { data, isLoading, error, refetch } = useInvoices({ customerIds: group.loaded ? group.ids : [] });
   const [open, setOpen] = React.useState<Invoice | null>(null);
   const [paying, setPaying] = React.useState(false);
   const outstanding = Math.max(Number(summary.data?.outstanding_balance ?? 0), 0);
   return (
     <div className="space-y-4">
-      <PageHeader title="Bills & payments" description="Bills are based only on deliveries you confirmed." />
+      <PageHeader title="Bills & payments" description={group.ids.length > 1
+        ? "One combined bill for all your branches with this supplier, based only on confirmed deliveries."
+        : "Bills are based only on deliveries you confirmed."} />
       <Card className="water-gradient border-0 text-white">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
           <div>
@@ -159,7 +174,8 @@ export default function BillsPage() {
 
 export function PaymentHistory() {
   const customer = useCustomer();
-  const { data, isLoading } = usePayments({ customerId: customer.id });
+  const group = useBillingGroup(customer);
+  const { data, isLoading } = usePayments({ customerIds: group.loaded ? group.ids : [] });
   return (
     <Card>
       <CardHeader><CardTitle>Payment history</CardTitle></CardHeader>

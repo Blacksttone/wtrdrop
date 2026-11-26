@@ -42,6 +42,7 @@ export interface Supplier {
   logo_url: string | null;
   billing_info: BillingInfo;
   status: "active" | "suspended";
+  listed: boolean;
   plan_id: string | null;
   created_at: string;
 }
@@ -97,6 +98,9 @@ export interface Customer {
   members_count: number | null;
   blocked_at: string | null;
   block_reason: string | null;
+  account_id: string | null;
+  branch_name: string | null;
+  bill_to_customer_id: string | null;
   created_at: string;
 }
 
@@ -118,6 +122,10 @@ export interface CustomerListRow {
   household_type: string | null;
   members_count: number | null;
   blocked: boolean;
+  account_name: string | null;
+  account_type: AccountType | null;
+  branch_name: string | null;
+  bill_to_customer_id: string | null;
 }
 
 export interface CustomerStock {
@@ -231,7 +239,7 @@ export interface Invoice {
     business_code?: string;
     tax_label?: string;
   };
-  customer_snapshot: { customer_name: string; address: string; phone?: string | null };
+  customer_snapshot: { customer_name: string; address: string; phone?: string | null; branch_name?: string | null; branches?: string[] | null };
   superseded_by: string | null;
   generated_at: string;
   customers?: Pick<Customer, "customer_name">;
@@ -313,6 +321,7 @@ export interface CustomerSummary {
   latest_invoice: Pick<Invoice, "id" | "invoice_number" | "amount_due" | "amount_paid" | "due_date" | "status" | "billing_period_start" | "billing_period_end"> | null;
   outstanding_balance: number;
   unbilled: { quantity: number; amount: number };
+  can_see_money: boolean;
 }
 
 export interface SupplierDashboard {
@@ -357,4 +366,63 @@ export interface StaffInvite {
   used_at: string | null;
   revoked_at: string | null;
   created_at: string;
+}
+
+export type AccountType = "home" | "store" | "company";
+export type AccountRole = "owner" | "admin" | "member";
+
+export interface CustomerAccount {
+  id: string;
+  name: string;
+  account_type: AccountType;
+  owner_id: string;
+  created_at: string;
+}
+
+export interface AccountMembership {
+  id: string;
+  account_id: string;
+  user_id: string;
+  role: AccountRole;
+  status: "active" | "blocked";
+  all_branches: boolean;
+}
+
+export interface AccountMember extends Omit<AccountMembership, "account_id"> {
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  branch_ids: string[];
+  created_at: string;
+}
+
+export interface MemberInvite {
+  id: string;
+  account_id: string;
+  code: string;
+  role: AccountRole;
+  all_branches: boolean;
+  branch_ids: string[];
+  label: string | null;
+  expires_at: string;
+}
+
+export interface ConnectionRequest {
+  id: string;
+  account_id: string;
+  supplier_id: string;
+  branch_name: string | null;
+  contact_name: string;
+  phone: string | null;
+  address: string;
+  delivery_instructions: string | null;
+  household_type: string | null;
+  members_count: number | null;
+  opening_stock: number | null;
+  daily_consumption: number;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  reason: string | null;
+  created_at: string;
+  suppliers?: { business_name: string } | null;
+  customer_accounts?: { name: string; account_type: AccountType } | null;
 }

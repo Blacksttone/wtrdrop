@@ -293,6 +293,7 @@ alter table public.supplier_connection_requests enable row level security;
 create policy accounts_select on public.customer_accounts for select to authenticated using (
   id in (select public.my_account_ids())
   or id in (select account_id from public.customers where supplier_id = public.my_supplier_id())
+  or id in (select account_id from public.supplier_connection_requests where supplier_id = public.my_supplier_id())
   or public.is_admin()
 );
 create policy account_members_select on public.customer_account_members for select to authenticated using (
@@ -324,6 +325,7 @@ create policy suppliers_select on public.suppliers for select to authenticated u
   or id = public.my_supplier_id()
   or public.is_admin()
   or id in (select supplier_id from public.customers where id in (select public.my_customer_ids()))
+  or id in (select supplier_id from public.supplier_connection_requests where account_id in (select public.my_account_ids()))
 );
 
 drop policy supplier_settings_select on public.supplier_settings;

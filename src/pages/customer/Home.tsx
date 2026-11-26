@@ -110,7 +110,7 @@ export default function CustomerHome() {
             </CardContent>
           </Card>
         </Link>
-        <Link to="/app/bills" className="block">
+        {s.can_see_money !== false && <Link to="/app/bills" className="block">
           <Card className="h-full transition-shadow hover:shadow-md">
             <CardContent className="flex items-center gap-3 p-4">
               <FileText className="h-5 w-5 text-primary" />
@@ -123,7 +123,7 @@ export default function CustomerHome() {
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </CardContent>
           </Card>
-        </Link>
+        </Link>}
       </div>
     </div>
   );

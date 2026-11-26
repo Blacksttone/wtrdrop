@@ -54,13 +54,15 @@ export function RequireSupplierRole({ roles }: { roles: SupplierRole[] }) {
 }
 
 export function RequireRole({ role }: { role: AppRole }) {
-  const { profile, supplier, customers, loadingProfile, staffBlocked } = useAuth();
+  const { profile, supplier, customers, loadingProfile, staffBlocked, memberBlocked } = useAuth();
   if (loadingProfile || !profile) return <FullPageLoader />;
   if (profile.is_disabled) return <Navigate to="/disabled" replace />;
   if (profile.role !== role) return <Navigate to={homeFor(profile.role, !!supplier, customers.length > 0)} replace />;
   if (role === "supplier" && staffBlocked)
     return <BlockedScreen title="Access blocked" message="The business owner has blocked your co-worker access. Contact them to get access again." />;
   if (role === "supplier" && !supplier) return <Navigate to="/onboarding/supplier" replace />;
+  if (role === "customer" && memberBlocked)
+    return <BlockedScreen title="Access blocked" message="The account owner has blocked your access. Contact them to get access again." />;
   if (role === "customer" && customers.length === 0) return <Navigate to="/onboarding/customer" replace />;
   return <Outlet />;
 }

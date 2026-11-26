@@ -1,5 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Store, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import * as React from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -8,14 +7,11 @@ import { FullPageLoader } from "@/auth/guards";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Input, Select, Textarea } from "@/components/ui/input";
-import { QrScanButton } from "@/components/water/QrScanButton";
-import { HOUSEHOLD_TYPES, suggestedDailyCans } from "@/lib/household";
-import { parseSupplierQr } from "@/lib/qr";
+import { Field, Input, Textarea } from "@/components/ui/input";
 import { errorMessage } from "@/lib/errors";
 import { rpc, supabase } from "@/lib/supabase";
 
-function Shell({ children, step }: { children: React.ReactNode; step: string }) {
+export function Shell({ children, step }: { children: React.ReactNode; step: string }) {
   const { signOut } = useAuth();
   return (
     <div className="min-h-screen bg-background">
@@ -159,135 +155,12 @@ const INVITE_KEY = "wd.pendingInvite";
 export function rememberInvite(v: { token?: string; code?: string }) {
   try { sessionStorage.setItem(INVITE_KEY, JSON.stringify(v)); } catch { /* ignore */ }
 }
-function readInvite(): { token?: string; code?: string } {
+export function readInvite(): { token?: string; code?: string } {
   try { return JSON.parse(sessionStorage.getItem(INVITE_KEY) ?? "{}"); } catch { return {}; }
 }
 
-export function CustomerOnboarding() {
-  const { profile, customers, refresh, loadingProfile, setActiveCustomerId } = useAuth();
-  const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const pending = readInvite();
-  const [token, setToken] = React.useState(params.get("invite") ?? pending.token ?? "");
-  const [code, setCode] = React.useState(params.get("code") ?? pending.code ?? "");
-  const [lookupCode, setLookupCode] = React.useState(token ? "" : code);
-  const [loading, setLoading] = React.useState(false);
-  const [f, setF] = React.useState({ name: profile?.full_name ?? "", phone: profile?.phone ?? "", address: "", instructions: "", opening: "", daily: "2", household: "", members: "" });
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
-  const suggestion = suggestedDailyCans(Number(f.members) || 0);
-  const onScan = (text: string) => {
-    const qr = parseSupplierQr(text);
-    if (!qr) return toast.error("That QR code is not a Waterdrop supplier code.");
-    if ("token" in qr) { setToken(qr.token); setCode(""); setLookupCode(""); }
-    else { setToken(""); setCode(qr.code); setLookupCode(qr.code); }
-    toast.success("QR code scanned");
-  };
-  const adding = params.get("add") === "1";
-
-  const supplierQ = useQuery({
-    queryKey: ["lookup-supplier", token, lookupCode],
-    enabled: Boolean(token || lookupCode.length >= 6),
-    queryFn: () => rpc<{ supplier_id: string; business_name: string; delivery_area: string | null; logo_url: string | null; address: string }[]>(
-      "lookup_supplier", { p_code: token ? null : lookupCode, p_invite_token: token || null }),
-  });
-  const found = supplierQ.data?.[0];
-
-  if (loadingProfile) return <FullPageLoader />;
-  if (profile?.role !== "customer") return <Navigate to="/home" replace />;
-  if (customers.length > 0 && !adding && !token && !params.get("code")) return <Navigate to="/app" replace />;
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!found) return toast.error("Find your supplier first");
-    setLoading(true);
-    try {
-      const c = await rpc<{ id: string }>("connect_to_supplier", {
-        p_customer_name: f.name, p_phone: f.phone, p_address: f.address, p_delivery_instructions: f.instructions || null,
-        p_business_code: token ? null : lookupCode, p_invite_token: token || null,
-        p_opening_stock: f.opening === "" ? null : Number(f.opening), p_daily_consumption: Number(f.daily) || 0,
-        p_household_type: f.household || null, p_members_count: f.members === "" ? null : Number(f.members),
-      });
-      try { sessionStorage.removeItem(INVITE_KEY); } catch { /* ignore */ }
-      await refresh();
-      setActiveCustomerId(c.id);
-      toast.success(`Connected to ${found.business_name}`);
-      navigate("/app", { replace: true });
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Shell step="Connect to your water supplier">
-      <h1 className="text-2xl font-bold">Who delivers your water?</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Enter the supplier code your supplier shared, or open their invite link / QR code.</p>
-      <Card className="mt-6">
-        <CardContent className="pt-5">
-          <QrScanButton onResult={onScan} label="Scan supplier QR code" />
-          <p className="my-3 text-center text-xs uppercase tracking-wider text-muted-foreground">or type the code</p>
-          {token ? (
-            <p className="text-sm text-muted-foreground">Using invitation link. <button type="button" className="text-primary underline" onClick={() => setToken("")}>Use a code instead</button></p>
-          ) : (
-            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); setLookupCode(code.trim().toUpperCase()); }}>
-              <Input aria-label="Supplier code" placeholder="SUPPLIER CODE" className="uppercase tracking-widest" maxLength={10} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-              <Button type="submit" variant="secondary">Find</Button>
-            </form>
-          )}
-          {supplierQ.isFetching && <p className="mt-3 text-sm text-muted-foreground">Looking up supplier…</p>}
-          {supplierQ.isSuccess && !found && <p className="mt-3 text-sm font-medium text-destructive">No active supplier found. Check the code or ask your supplier for a new link.</p>}
-          {found && (
-            <div className="mt-4 flex items-center gap-3 rounded-xl bg-secondary p-3">
-              {found.logo_url ? <img src={found.logo_url} alt="" className="h-10 w-10 rounded-lg object-cover" /> : <Store className="h-10 w-10 rounded-lg bg-white p-2 text-primary" />}
-              <div className="min-w-0">
-                <p className="font-semibold">{found.business_name}</p>
-                <p className="truncate text-xs text-muted-foreground">{found.delivery_area ?? found.address}</p>
-              </div>
-              <CheckCircle2 className="ml-auto h-5 w-5 text-stock-ok" />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {found && (
-        <form onSubmit={submit} className="mt-6 space-y-4">
-          <Card>
-            <CardHeader><CardTitle>Delivery details</CardTitle></CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field label="Name" htmlFor="n"><Input id="n" required minLength={2} value={f.name} onChange={set("name")} /></Field>
-              <Field label="Mobile number" htmlFor="p"><Input id="p" type="tel" required pattern="\+?[0-9 ]{7,16}" value={f.phone} onChange={set("phone")} /></Field>
-              <Field label="Delivery address" htmlFor="a" className="sm:col-span-2"><Textarea id="a" required minLength={3} value={f.address} onChange={set("address")} /></Field>
-              <Field label="Delivery instructions (optional)" htmlFor="i" className="sm:col-span-2"><Input id="i" placeholder="e.g. 2nd floor, ring the bell" value={f.instructions} onChange={set("instructions")} /></Field>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Your household</CardTitle><CardDescription>Helps your supplier plan deliveries and estimate your usage.</CardDescription></CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field label="Who lives here?" htmlFor="ht">
-                <Select id="ht" value={f.household} onChange={set("household")}>
-                  <option value="">Select…</option>
-                  {HOUSEHOLD_TYPES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
-                </Select>
-              </Field>
-              <Field label="Number of members" htmlFor="mc" hint="People in the house / room / office">
-                <Input id="mc" type="number" inputMode="numeric" min={1} max={500} value={f.members}
-                  onChange={(e) => { const m = e.target.value; setF({ ...f, members: m, daily: m && Number(m) > 0 ? String(suggestedDailyCans(Number(m))) : f.daily }); }} />
-              </Field>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Your water today</CardTitle><CardDescription>Helps Waterdrop tell you when to order.</CardDescription></CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <Field label="Full cans you have now" htmlFor="o" hint="Leave blank if unsure — stock will show as unconfirmed"><Input id="o" type="number" min={0} max={1000} value={f.opening} onChange={set("opening")} /></Field>
-              <Field label="Cans you use per day" htmlFor="d" hint={suggestion ? `About ${suggestion} for ${f.members} people — change if needed` : undefined}><Input id="d" type="number" min={0} max={100} value={f.daily} onChange={set("daily")} /></Field>
-            </CardContent>
-          </Card>
-          <Button type="submit" size="lg" className="w-full" loading={loading}>Connect to {found.business_name}</Button>
-        </form>
-      )}
-    </Shell>
-  );
+export function clearInvite() {
+  try { sessionStorage.removeItem(INVITE_KEY); } catch { /* ignore */ }
 }
 
 /** /join/:token or /join?code=XXXX — entry point from invite links & QR codes. */

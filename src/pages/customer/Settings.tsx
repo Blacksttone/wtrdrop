@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, Plus } from "lucide-react";
+import { ChevronRight, LogOut, MapPin, Plus, Users } from "lucide-react";
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { useAuth, useCustomer } from "@/auth/AuthProvider";
+import { ACCOUNT_TYPES, useAuth, useCustomer } from "@/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditableSection } from "@/components/ui/editable-section";
@@ -12,7 +12,7 @@ import { useAction } from "@/lib/hooks";
 import { HOUSEHOLD_TYPES, suggestedDailyCans } from "@/lib/household";
 import { useCustomerSummary } from "@/lib/queries";
 import { rpc, supabase } from "@/lib/supabase";
-import type { Customer } from "@/types/db";
+import type { AccountType, Customer } from "@/types/db";
 
 const TIMEZONES = ["Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Asia/Colombo", "Europe/London", "America/New_York"];
 
@@ -21,11 +21,17 @@ const fromCustomer = (c: Customer) => ({
   tz: c.timezone, low: String(c.low_stock_threshold), critical: String(c.critical_threshold),
   safety: String(c.safety_stock), address: c.address, phone: c.phone ?? "", instructions: c.delivery_instructions ?? "",
   household: c.household_type ?? "", members: c.members_count == null ? "" : String(c.members_count),
+  branch: c.branch_name ?? "",
 });
 
 export default function CustomerSettings() {
   const customer = useCustomer();
-  const { profile, refresh, signOut } = useAuth();
+  const { profile, refresh, signOut, activeAccount, accountRole, canSeeMoney } = useAuth();
+  const canAdmin = canSeeMoney;
+  const [acc, setAcc] = React.useState({ name: activeAccount?.name ?? "", type: (activeAccount?.account_type ?? "home") as AccountType });
+  const saveAccount = useAction(() => rpc("update_customer_account", { p_account_id: activeAccount!.id, p_name: acc.name, p_type: acc.type }), {
+    success: "Account saved", onSuccess: () => refresh(),
+  });
   const qc = useQueryClient();
   const summary = useCustomerSummary(customer.id);
   const [f, setF] = React.useState(() => fromCustomer(customer));
@@ -43,6 +49,7 @@ export default function CustomerSettings() {
         p_timezone: f.tz, p_low_stock_threshold: Number(f.low), p_critical_threshold: Number(f.critical), p_safety_stock: Number(f.safety),
         p_delivery_instructions: f.instructions, p_address: f.address, p_phone: f.phone,
         p_household_type: f.household || null, p_members_count: f.members === "" ? null : Number(f.members),
+        p_branch_name: f.branch || null,
       });
     },
     { success: "Saved", onSuccess: () => { refresh(); qc.invalidateQueries(); } },
@@ -68,6 +75,42 @@ export default function CustomerSettings() {
             <Button disabled={opening === ""} loading={setOpeningStock.isPending} onClick={() => setOpeningStock.mutate(undefined)}>Save</Button>
           </CardContent>
         </Card>
+      )}
+
+      {activeAccount && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Link to="/app/branches" className="flex items-center gap-3 rounded-xl border bg-card p-3 hover:shadow-sm">
+            <MapPin className="h-5 w-5 text-primary" /><span className="flex-1 text-sm font-medium">Branches & homes</span><ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+          <Link to="/app/team" className="flex items-center gap-3 rounded-xl border bg-card p-3 hover:shadow-sm">
+            <Users className="h-5 w-5 text-primary" /><span className="flex-1 text-sm font-medium">{ACCOUNT_TYPES[activeAccount.account_type].teamLabel} members</span><ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        </div>
+      )}
+
+      {activeAccount && (canAdmin ? (
+        <EditableSection title="Account" description={`You are the ${accountRole} of this account.`}
+          onSave={() => saveAccount.mutateAsync(undefined)} onCancel={() => setAcc({ name: activeAccount.name, type: activeAccount.account_type })} saving={saveAccount.isPending}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Name" htmlFor="accn"><Input id="accn" value={acc.name} maxLength={120} onChange={(e) => setAcc({ ...acc, name: e.target.value })} /></Field>
+            <Field label="Type" htmlFor="acct">
+              <Select id="acct" value={acc.type} onChange={(e) => setAcc({ ...acc, type: e.target.value as AccountType })}>
+                {(Object.keys(ACCOUNT_TYPES) as AccountType[]).map((t) => <option key={t} value={t}>{ACCOUNT_TYPES[t].label}</option>)}
+              </Select>
+            </Field>
+          </div>
+        </EditableSection>
+      ) : (
+        <Card><CardContent className="p-4 text-sm">
+          <p className="font-semibold">{activeAccount.name} · {ACCOUNT_TYPES[activeAccount.account_type].label}</p>
+          <p className="text-muted-foreground">You are a member. Bills and payments are handled by the account owner or an admin.</p>
+        </CardContent></Card>
+      ))}
+
+      {activeAccount && activeAccount.account_type !== "home" && (
+        <EditableSection title="Branch" description="The name shown for this branch on orders and the combined bill." onSave={() => save.mutateAsync(undefined)} onCancel={reset} saving={save.isPending}>
+          <Field label="Branch name" htmlFor="brn"><Input id="brn" value={f.branch} maxLength={80} placeholder="e.g. Anna Nagar branch" onChange={set("branch")} /></Field>
+        </EditableSection>
       )}
 
       <EditableSection title="Household" description="Who uses the water here." onSave={() => save.mutateAsync(undefined)} onCancel={reset} saving={save.isPending}>
@@ -125,7 +168,7 @@ export default function CustomerSettings() {
       </EditableSection>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        <Button variant="outline" asChild><Link to="/onboarding/customer?add=1"><Plus /> Connect another supplier</Link></Button>
+        {canAdmin && <Button variant="outline" asChild><Link to={`/onboarding/customer?add=1${activeAccount ? `&account=${activeAccount.id}` : ""}`}><Plus /> Add a branch / supplier</Link></Button>}
         <Button variant="ghost" onClick={signOut}><LogOut /> Sign out</Button>
       </div>
     </div>

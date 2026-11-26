@@ -69,9 +69,9 @@ function BlockDialog({ customer, onClose }: { customer: Customer; onClose: () =>
 export default function CustomerDetail() {
   const { id = "" } = useParams();
   const customer = useQuery({ queryKey: ["customer", id], queryFn: async () => {
-    const { data, error } = await supabase.from("customers").select("*").eq("id", id).single();
+    const { data, error } = await supabase.from("customers").select("*, customer_accounts(name, account_type)").eq("id", id).single();
     if (error) throw error;
-    return data as Customer;
+    return data as Customer & { customer_accounts: { name: string; account_type: string } | null };
   } });
   const summary = useCustomerSummary(id);
   const deliveries = useCustomerDeliveries(id);
@@ -96,7 +96,9 @@ export default function CustomerDetail() {
   return (
     <div className="space-y-5">
       <Link to="/supplier/customers" className="inline-flex items-center gap-1 text-sm text-primary"><ArrowLeft className="h-4 w-4" /> Customers</Link>
-      <PageHeader title={c.customer_name} description={`${c.address}${c.phone ? ` · ${c.phone}` : ""}${c.user_id ? "" : " · offline customer"}`}
+      <PageHeader
+        title={c.customer_accounts && c.customer_accounts.account_type !== "home" ? `${c.customer_accounts.name}${c.branch_name ? ` · ${c.branch_name}` : ""}` : c.customer_name}
+        description={`${c.customer_accounts ? `${c.customer_accounts.account_type[0].toUpperCase()}${c.customer_accounts.account_type.slice(1)} · contact ${c.customer_name} · ` : ""}${c.address}${c.phone ? ` · ${c.phone}` : ""}${c.user_id || c.account_id ? "" : " · offline customer"}${c.bill_to_customer_id ? " · billed on the head branch's combined bill" : ""}`}
         actions={<>
           <Button onClick={() => setDialog("delivery")}><Truck /> Delivery</Button>
           {canManage && <>

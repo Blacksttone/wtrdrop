@@ -4,6 +4,7 @@
  * is a faithful rendering of an immutable invoice).
  */
 import { isNativeApp, saveOrShareFile } from "@/lib/native";
+import { groupItemsByBranch } from "@/lib/invoiceBranches";
 import type { Invoice, InvoiceItem } from "@/types/db";
 
 const rupee = (n: number) => `Rs. ${Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -40,6 +41,7 @@ export async function buildInvoicePdf(invoice: Invoice, items: InvoiceItem[]): P
   doc.setFont("helvetica", "normal").setFontSize(10).text(C.customer_name, 40, 138);
   doc.setFontSize(9).text(doc.splitTextToSize(C.address, 240), 40, 152);
   if (C.phone) doc.text(`Phone: ${C.phone}`, 40, 178);
+  if (C.branches && C.branches.length > 1) doc.text(doc.splitTextToSize(`Branches: ${C.branches.join(", ")}`, 300), 40, 190);
 
   const meta: [string, string][] = [
     ["Invoice date", d(invoice.invoice_date)],
@@ -53,10 +55,13 @@ export async function buildInvoicePdf(invoice: Invoice, items: InvoiceItem[]): P
   });
 
   autoTable(doc, {
-    startY: 200,
+    startY: C.branches && C.branches.length > 1 ? 212 : 200,
     head: [["Date", "Description", "Cans", "Price / can", "Amount"]],
     body: items.length
-      ? items.map((it) => [d(it.item_date), it.description, String(it.quantity), rupee(it.unit_price), rupee(it.amount)])
+      ? groupItemsByBranch(invoice, items).flatMap((sec) => [
+          ...(sec.branch ? [[{ content: `${sec.branch}  ·  ${sec.quantity} cans  ·  ${rupee(sec.amount)}`, colSpan: 5, styles: { fontStyle: "bold" as const, fillColor: [241, 245, 249] as [number, number, number] } }]] : []),
+          ...sec.items.map((it) => [d(it.item_date), it.shortDescription, String(it.quantity), rupee(it.unit_price), rupee(it.amount)]),
+        ])
       : [["-", "No confirmed deliveries in this period", "0", "-", rupee(0)]],
     foot: [["", "Total delivered cans", String(invoice.total_quantity), "", rupee(invoice.subtotal)]],
     theme: "striped",

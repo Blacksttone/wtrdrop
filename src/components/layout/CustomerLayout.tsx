@@ -1,22 +1,27 @@
-import { Droplets, FileText, Home, Package, Settings } from "lucide-react";
+import { Droplets, FileText, Home, MapPin, Package, Settings, Truck, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
-import { useAuth } from "@/auth/AuthProvider";
+import { ACCOUNT_TYPES, branchLabel, useAuth } from "@/auth/AuthProvider";
 import { BlockedScreen } from "@/auth/guards";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./NotificationBell";
 
-const tabs = [
+const baseTabs = (money: boolean) => [
   { to: "/app", label: "Home", icon: Home, end: true },
   { to: "/app/orders", label: "Orders", icon: Package },
   { to: "/app/consumption", label: "Usage", icon: Droplets },
-  { to: "/app/bills", label: "Bills", icon: FileText },
+  money ? { to: "/app/bills", label: "Bills", icon: FileText } : { to: "/app/deliveries", label: "Deliveries", icon: Truck },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
 
 /** Simple, thumb-friendly shell for customers (bottom tabs on mobile). */
 export function CustomerLayout() {
-  const { customers, activeCustomer, setActiveCustomerId } = useAuth();
+  const { customers, accounts, activeCustomer, activeAccount, setActiveCustomerId, canSeeMoney } = useAuth();
+  const tabs = baseTabs(canSeeMoney);
+  const extra = [
+    { to: "/app/branches", label: "Branches", icon: MapPin },
+    ...(activeAccount ? [{ to: "/app/team", label: ACCOUNT_TYPES[activeAccount.account_type].teamLabel, icon: Users }] : []),
+  ];
   if (activeCustomer?.blocked_at && customers.length === 1) {
     return (
       <BlockedScreen
@@ -32,19 +37,19 @@ export function CustomerLayout() {
           <Logo size="sm" />
           {customers.length > 1 && (
             <select
-              aria-label="Supplier account"
-              className="ml-2 max-w-[40vw] truncate rounded-md border bg-card px-2 py-1 text-sm"
+              aria-label="Branch"
+              className="ml-1 min-w-0 max-w-[48vw] truncate rounded-md border bg-card px-2 py-1 text-sm"
               value={activeCustomer?.id}
               onChange={(e) => setActiveCustomerId(e.target.value)}
             >
               {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.customer_name} · {c.address.slice(0, 18)}</option>
+                <option key={c.id} value={c.id}>{branchLabel(c, accounts.length > 1 ? accounts.find((a) => a.id === c.account_id) : null)}</option>
               ))}
             </select>
           )}
           <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="Main">
-            {tabs.map((t) => (
-              <NavLink key={t.to} to={t.to} end={t.end}
+            {[...tabs, ...extra].map((t) => (
+              <NavLink key={t.to} to={t.to} end={"end" in t ? Boolean(t.end) : false}
                 className={({ isActive }) => cn("rounded-lg px-3 py-2 text-sm font-medium", isActive ? "bg-secondary text-primary" : "text-slate-600 hover:bg-secondary")}>
                 {t.label}
               </NavLink>

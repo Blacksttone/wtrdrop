@@ -2,7 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { supabase } from "@/lib/supabase";
-import type { Customer, Profile, Supplier, SupplierRole } from "@/types/db";
+import type { AccountMembership, AccountRole, Customer, CustomerAccount, Profile, Supplier, SupplierRole } from "@/types/db";
 
 interface AuthState {
   session: Session | null;
@@ -13,8 +13,19 @@ interface AuthState {
   supplierRole: SupplierRole | null;
   /** co-worker whose access the owner blocked */
   staffBlocked: boolean;
+  /** branches the customer user can access (across all their accounts) */
   customers: Customer[];
   activeCustomer: Customer | null;
+  accounts: CustomerAccount[];
+  memberships: AccountMembership[];
+  /** account of the active branch */
+  activeAccount: CustomerAccount | null;
+  /** caller's role in the active branch's account (owner when the branch has no account) */
+  accountRole: AccountRole | null;
+  /** owner/admin of the active branch: may see bills and pay */
+  canSeeMoney: boolean;
+  /** every membership blocked and no branches left */
+  memberBlocked: boolean;
   setActiveCustomerId: (id: string) => void;
   loadingProfile: boolean;
   refresh: () => Promise<void>;
@@ -61,6 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let supplierRole: SupplierRole | null = null;
       let staffBlocked = false;
       let customers: Customer[] = [];
+      let accounts: CustomerAccount[] = [];
+      let memberships: AccountMembership[] = [];
       if (profile.role === "supplier") {
         const roleRes = await supabase.rpc("my_supplier_role");
         if (roleRes.error) throw roleRes.error;
@@ -81,16 +94,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       if (profile.role === "customer") {
-        const r = await supabase.from("customers").select("*").eq("user_id", userId!).order("created_at");
+        // RLS returns exactly the branches this user may access (own + family/team).
+        const [r, acc, mem] = await Promise.all([
+          supabase.from("customers").select("*").order("created_at"),
+          supabase.from("customer_accounts").select("*").order("created_at"),
+          supabase.from("customer_account_members").select("id, account_id, user_id, role, status, all_branches").eq("user_id", userId!),
+        ]);
         if (r.error) throw r.error;
+        if (acc.error) throw acc.error;
+        if (mem.error) throw mem.error;
         customers = r.data ?? [];
+        accounts = acc.data ?? [];
+        memberships = (mem.data ?? []) as AccountMembership[];
       }
-      return { profile: profile as Profile, supplier, supplierRole, staffBlocked, customers };
+      return { profile: profile as Profile, supplier, supplierRole, staffBlocked, customers, accounts, memberships };
     },
   });
 
   const customers = me.data?.customers ?? [];
   const activeCustomer = customers.find((c) => c.id === activeId) ?? customers[0] ?? null;
+  const accounts = me.data?.accounts ?? [];
+  const memberships = me.data?.memberships ?? [];
+  const activeAccount = accounts.find((a) => a.id === activeCustomer?.account_id) ?? null;
+  const activeMembership = memberships.find((m) => m.account_id === activeCustomer?.account_id && m.status === "active");
+  const accountRole: AccountRole | null = activeCustomer ? (activeCustomer.account_id ? activeMembership?.role ?? null : "owner") : null;
 
   const value: AuthState = {
     session,
@@ -101,6 +128,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     staffBlocked: me.data?.staffBlocked ?? false,
     customers,
     activeCustomer,
+    accounts,
+    memberships,
+    activeAccount,
+    accountRole,
+    canSeeMoney: accountRole === "owner" || accountRole === "admin",
+    memberBlocked: customers.length === 0 && memberships.length > 0 && memberships.every((m) => m.status === "blocked"),
     setActiveCustomerId: (id) => {
       setActiveId(id);
       try {
@@ -145,4 +178,16 @@ export function useSupplier(): Supplier {
 export function useCanManage(): boolean {
   const { supplierRole } = useAuth();
   return supplierRole === "owner" || supplierRole === "manager";
+}
+
+export const ACCOUNT_TYPES = {
+  home: { label: "Home", teamLabel: "Family", memberWord: "family member", branchWord: "home" },
+  store: { label: "Store", teamLabel: "Team", memberWord: "team member", branchWord: "branch" },
+  company: { label: "Company", teamLabel: "Team", memberWord: "team member", branchWord: "branch" },
+} as const;
+
+/** "Raja Stores · Lake Rd branch" style label for a branch. */
+export function branchLabel(c: Pick<Customer, "branch_name" | "address" | "customer_name">, account?: Pick<CustomerAccount, "name"> | null) {
+  const where = c.branch_name || c.address.split(",")[0];
+  return account ? `${account.name} · ${where}` : where || c.customer_name;
 }

@@ -21,7 +21,7 @@ const ForgotPassword = lazy(() => AuthPages.then((m) => ({ default: m.ForgotPass
 const ResetPassword = lazy(() => AuthPages.then((m) => ({ default: m.ResetPassword })));
 const Onb = () => import("./pages/public/Onboarding");
 const SupplierOnboarding = lazy(() => Onb().then((m) => ({ default: m.SupplierOnboarding })));
-const CustomerOnboarding = lazy(() => Onb().then((m) => ({ default: m.CustomerOnboarding })));
+const CustomerOnboarding = lazy(() => import("./pages/public/CustomerOnboarding").then((m) => ({ default: m.CustomerOnboarding })));
 const Join = lazy(() => Onb().then((m) => ({ default: m.Join })));
 const Notifications = lazy(() => import("./pages/shared/Notifications"));
 
@@ -33,6 +33,8 @@ const CustomerDeliveries = lazy(() => import("./pages/customer/Deliveries"));
 const Consumption = lazy(() => import("./pages/customer/Consumption"));
 const Bills = lazy(() => import("./pages/customer/Bills"));
 const CustomerSettings = lazy(() => import("./pages/customer/Settings"));
+const CustomerBranches = lazy(() => import("./pages/customer/Branches"));
+const CustomerTeam = lazy(() => import("./pages/customer/Team"));
 
 const SupplierDashboard = lazy(() => import("./pages/supplier/Dashboard"));
 const Customers = lazy(() => import("./pages/supplier/Customers"));
@@ -92,6 +94,12 @@ function SuspendedBanner() {
 }
 
 /** Signed-in visitors skip the marketing page and go straight to their dashboard. */
+/** Bills/payments are for account owners and admins only (members are sent home). */
+function MoneyOnly({ children }: { children: import("react").ReactNode }) {
+  const { canSeeMoney } = useAuth();
+  return canSeeMoney ? <>{children}</> : <Navigate to="/app" replace />;
+}
+
 function HomeOrLanding() {
   const { session, ready } = useAuth();
   if (!ready) return <FullPageLoader />;
@@ -168,7 +176,9 @@ export default function App() {
               <Route path="orders" element={<OrdersList />} />
               <Route path="deliveries" element={<CustomerDeliveries />} />
               <Route path="consumption" element={<Consumption />} />
-              <Route path="bills" element={<Bills />} />
+              <Route path="bills" element={<MoneyOnly><Bills /></MoneyOnly>} />
+              <Route path="branches" element={<CustomerBranches />} />
+              <Route path="team" element={<CustomerTeam />} />
               <Route path="payments" element={<Navigate to="/app/bills" replace />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="settings" element={<CustomerSettings />} />
