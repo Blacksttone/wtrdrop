@@ -297,6 +297,23 @@ different package name, because it can't change after the first upload.
 
 After changing web code, run `npm run android:sync` before rebuilding the app.
 
+### Publishing app updates (in-app update prompt)
+
+Installed apps check `app_releases` on start. A newer `version_code` shows **Update available**, and a
+compulsory release blocks older versions until they update.
+
+- **From the admin console:** Admin → **App updates** → upload the APK with its version name and code.
+- **From the command line:** bump `versionCode`/`versionName` in `android/app/build.gradle`, then run:
+
+```bash
+WD_KEYSTORE_FILE=... WD_KEYSTORE_PASSWORD=... WD_KEY_ALIAS=... WD_KEY_PASSWORD=... \
+SUPABASE_SERVICE_ROLE_KEY=... scripts/android-publish.sh "What's new" [--mandatory]
+```
+
+The signing keystore is stored in the Supabase Vault (`wd_android_signing_keystore`). Every update must be
+signed with this same key, or Android refuses to install it. The publish script checks the certificate before
+uploading.
+
 ## Integrations that need API keys
 
 | Integration | Variables | Without it |
