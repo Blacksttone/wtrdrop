@@ -24,8 +24,10 @@ export function siteUrl(): string {
 }
 
 /** One-time native setup: status bar colour, splash screen, Android back button. */
-export function initNativeApp(goBack: () => void) {
+export function initNativeApp(goBack: () => void, onResume?: (active: boolean) => void) {
   if (!isNativeApp) return;
+  // Refresh the login token only while the app is in the foreground.
+  App.addListener("appStateChange", ({ isActive }) => onResume?.(isActive));
   StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
   StatusBar.setBackgroundColor({ color: "#0b6bcb" }).catch(() => {});
   SplashScreen.hide().catch(() => {});

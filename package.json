@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Waterdrop \u2014 Smart water can management & delivery platform. Never Run Out of Water.",
+  "description": "Waterdrop — Smart water can management & delivery platform. Never Run Out of Water.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -25,6 +25,7 @@
     "@capacitor/browser": "^8.0.5",
     "@capacitor/core": "^8.6.2",
     "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/preferences": "^8.0.1",
     "@capacitor/share": "^8.0.3",
     "@capacitor/splash-screen": "^8.0.2",
     "@capacitor/status-bar": "^8.0.4",

@@ -9,8 +9,8 @@ import { Logo } from "./components/brand/Logo";
 import { CustomerLayout } from "./components/layout/CustomerLayout";
 import { DashboardLayout, type NavItem } from "./components/layout/DashboardLayout";
 import { Button } from "./components/ui/button";
-import { initNativeApp } from "./lib/native";
-import { isSupabaseConfigured } from "./lib/supabase";
+import { initNativeApp, isNativeApp } from "./lib/native";
+import { isSupabaseConfigured, supabase } from "./lib/supabase";
 
 const Landing = lazy(() => import("./pages/public/Landing"));
 const AuthPages = import("./pages/public/AuthPages");
@@ -76,6 +76,13 @@ function SuspendedBanner() {
   return <div className="bg-red-600 px-4 py-2 text-center text-sm font-medium text-white">Your account is suspended. You can view data but cannot record deliveries or bill customers. Contact Waterdrop support.</div>;
 }
 
+/** Signed-in visitors skip the marketing page and go straight to their dashboard. */
+function HomeOrLanding() {
+  const { session, ready } = useAuth();
+  if (!ready) return <FullPageLoader />;
+  return session ? <Navigate to="/home" replace /> : <Landing />;
+}
+
 function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
@@ -112,12 +119,19 @@ function ConfigMissing() {
 
 export default function App() {
   const navigate = useNavigate();
-  useEffect(() => initNativeApp(() => navigate(-1)), [navigate]);
+  useEffect(
+    () =>
+      initNativeApp(
+        () => navigate(-1),
+        (active) => (active ? supabase.auth.startAutoRefresh() : supabase.auth.stopAutoRefresh()),
+      ),
+    [navigate],
+  );
   if (!isSupabaseConfigured) return <ConfigMissing />;
   return (
     <Suspense fallback={<FullPageLoader />}>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={isNativeApp ? <Navigate to="/home" replace /> : <HomeOrLanding />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
