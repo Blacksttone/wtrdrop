@@ -8,7 +8,10 @@ import { FullPageLoader } from "@/auth/guards";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Input, Textarea } from "@/components/ui/input";
+import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { QrScanButton } from "@/components/water/QrScanButton";
+import { HOUSEHOLD_TYPES, suggestedDailyCans } from "@/lib/household";
+import { parseSupplierQr } from "@/lib/qr";
 import { errorMessage } from "@/lib/errors";
 import { rpc, supabase } from "@/lib/supabase";
 
@@ -43,6 +46,8 @@ export function SupplierOnboarding() {
   const navigate = useNavigate();
   const [loading, setLoading] = React.useState(false);
   const [logo, setLogo] = React.useState<File | null>(null);
+  const [staffCode, setStaffCode] = React.useState("");
+  const [joining, setJoining] = React.useState(false);
   const [f, setF] = React.useState({
     business_name: "", owner_name: profile?.full_name ?? "", phone: profile?.phone ?? "", email: profile?.email ?? "",
     address: "", delivery_area: "", default_can_price: "40", delivery_lead_days: "1",
@@ -51,6 +56,21 @@ export function SupplierOnboarding() {
   if (loadingProfile) return <FullPageLoader />;
   if (profile?.role !== "supplier") return <Navigate to="/home" replace />;
   if (supplier) return <Navigate to="/supplier" replace />;
+
+  async function joinAsStaff(e: React.FormEvent) {
+    e.preventDefault();
+    setJoining(true);
+    try {
+      await rpc("join_supplier_as_staff", { p_code: staffCode });
+      await refresh();
+      toast.success("You joined the business as a co-worker");
+      navigate("/supplier", { replace: true });
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setJoining(false);
+    }
+  }
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
 
@@ -79,7 +99,20 @@ export function SupplierOnboarding() {
 
   return (
     <Shell step="Set up your business">
-      <h1 className="text-2xl font-bold">Tell us about your water business</h1>
+      <Card className="mb-8 border-primary/40">
+        <CardHeader>
+          <CardTitle>Working for a water business?</CardTitle>
+          <CardDescription>If the owner gave you a co-worker code, enter it here instead of creating a new business.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={joinAsStaff} className="flex gap-2">
+            <Input aria-label="Co-worker code" placeholder="CO-WORKER CODE" className="uppercase tracking-widest" maxLength={8}
+              value={staffCode} onChange={(e) => setStaffCode(e.target.value.toUpperCase())} autoCapitalize="characters" />
+            <Button type="submit" disabled={staffCode.length !== 8} loading={joining}>Join</Button>
+          </form>
+        </CardContent>
+      </Card>
+      <h1 className="text-2xl font-bold">Or set up your own water business</h1>
       <p className="mt-1 text-sm text-muted-foreground">Customers will see these details on orders and bills.</p>
       <form onSubmit={submit} className="mt-6 space-y-6">
         <Card>
@@ -135,12 +168,20 @@ export function CustomerOnboarding() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const pending = readInvite();
-  const [token] = React.useState(params.get("invite") ?? pending.token ?? "");
+  const [token, setToken] = React.useState(params.get("invite") ?? pending.token ?? "");
   const [code, setCode] = React.useState(params.get("code") ?? pending.code ?? "");
   const [lookupCode, setLookupCode] = React.useState(token ? "" : code);
   const [loading, setLoading] = React.useState(false);
-  const [f, setF] = React.useState({ name: profile?.full_name ?? "", phone: profile?.phone ?? "", address: "", instructions: "", opening: "", daily: "2" });
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
+  const [f, setF] = React.useState({ name: profile?.full_name ?? "", phone: profile?.phone ?? "", address: "", instructions: "", opening: "", daily: "2", household: "", members: "" });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
+  const suggestion = suggestedDailyCans(Number(f.members) || 0);
+  const onScan = (text: string) => {
+    const qr = parseSupplierQr(text);
+    if (!qr) return toast.error("That QR code is not a Waterdrop supplier code.");
+    if ("token" in qr) { setToken(qr.token); setCode(""); setLookupCode(""); }
+    else { setToken(""); setCode(qr.code); setLookupCode(qr.code); }
+    toast.success("QR code scanned");
+  };
   const adding = params.get("add") === "1";
 
   const supplierQ = useQuery({
@@ -164,6 +205,7 @@ export function CustomerOnboarding() {
         p_customer_name: f.name, p_phone: f.phone, p_address: f.address, p_delivery_instructions: f.instructions || null,
         p_business_code: token ? null : lookupCode, p_invite_token: token || null,
         p_opening_stock: f.opening === "" ? null : Number(f.opening), p_daily_consumption: Number(f.daily) || 0,
+        p_household_type: f.household || null, p_members_count: f.members === "" ? null : Number(f.members),
       });
       try { sessionStorage.removeItem(INVITE_KEY); } catch { /* ignore */ }
       await refresh();
@@ -183,8 +225,10 @@ export function CustomerOnboarding() {
       <p className="mt-1 text-sm text-muted-foreground">Enter the supplier code your supplier shared, or open their invite link / QR code.</p>
       <Card className="mt-6">
         <CardContent className="pt-5">
+          <QrScanButton onResult={onScan} label="Scan supplier QR code" />
+          <p className="my-3 text-center text-xs uppercase tracking-wider text-muted-foreground">or type the code</p>
           {token ? (
-            <p className="text-sm text-muted-foreground">Using invitation link.</p>
+            <p className="text-sm text-muted-foreground">Using invitation link. <button type="button" className="text-primary underline" onClick={() => setToken("")}>Use a code instead</button></p>
           ) : (
             <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); setLookupCode(code.trim().toUpperCase()); }}>
               <Input aria-label="Supplier code" placeholder="SUPPLIER CODE" className="uppercase tracking-widest" maxLength={10} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
@@ -218,10 +262,25 @@ export function CustomerOnboarding() {
             </CardContent>
           </Card>
           <Card>
+            <CardHeader><CardTitle>Your household</CardTitle><CardDescription>Helps your supplier plan deliveries and estimate your usage.</CardDescription></CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Field label="Who lives here?" htmlFor="ht">
+                <Select id="ht" value={f.household} onChange={set("household")}>
+                  <option value="">Select…</option>
+                  {HOUSEHOLD_TYPES.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+                </Select>
+              </Field>
+              <Field label="Number of members" htmlFor="mc" hint="People in the house / room / office">
+                <Input id="mc" type="number" inputMode="numeric" min={1} max={500} value={f.members}
+                  onChange={(e) => { const m = e.target.value; setF({ ...f, members: m, daily: m && Number(m) > 0 ? String(suggestedDailyCans(Number(m))) : f.daily }); }} />
+              </Field>
+            </CardContent>
+          </Card>
+          <Card>
             <CardHeader><CardTitle>Your water today</CardTitle><CardDescription>Helps Waterdrop tell you when to order.</CardDescription></CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <Field label="Full cans you have now" htmlFor="o" hint="Leave blank if unsure — stock will show as unconfirmed"><Input id="o" type="number" min={0} max={1000} value={f.opening} onChange={set("opening")} /></Field>
-              <Field label="Cans you use per day" htmlFor="d"><Input id="d" type="number" min={0} max={100} value={f.daily} onChange={set("daily")} /></Field>
+              <Field label="Cans you use per day" htmlFor="d" hint={suggestion ? `About ${suggestion} for ${f.members} people — change if needed` : undefined}><Input id="d" type="number" min={0} max={100} value={f.daily} onChange={set("daily")} /></Field>
             </CardContent>
           </Card>
           <Button type="submit" size="lg" className="w-full" loading={loading}>Connect to {found.business_name}</Button>

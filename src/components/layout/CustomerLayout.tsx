@@ -1,6 +1,7 @@
 import { Droplets, FileText, Home, Package, Settings } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { BlockedScreen } from "@/auth/guards";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "./NotificationBell";
@@ -16,6 +17,14 @@ const tabs = [
 /** Simple, thumb-friendly shell for customers (bottom tabs on mobile). */
 export function CustomerLayout() {
   const { customers, activeCustomer, setActiveCustomerId } = useAuth();
+  if (activeCustomer?.blocked_at && customers.length === 1) {
+    return (
+      <BlockedScreen
+        title="Account blocked by your supplier"
+        message={`Reason: ${activeCustomer.block_reason ?? "not given"}. Please contact your water supplier to unblock your account.`}
+      />
+    );
+  }
   return (
     <div className="min-h-screen pb-24 md:pb-8">
       <header className="safe-top sticky top-0 z-30 border-b bg-card/90 backdrop-blur">

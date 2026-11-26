@@ -3,7 +3,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const field =
-  "flex w-full rounded-lg border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm aria-[invalid=true]:border-destructive";
+  "flex w-full rounded-lg border border-input bg-card px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:border-transparent disabled:bg-muted/50 disabled:text-foreground disabled:shadow-none disabled:opacity-100 sm:text-sm aria-[invalid=true]:border-destructive";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => <input ref={ref} className={cn(field, "h-10", className)} {...props} />,
@@ -88,6 +88,7 @@ export function Switch({ checked, onChange, id, label }: { checked: boolean; onC
       className={cn(
         "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
         checked ? "bg-primary" : "bg-input",
+        "disabled:cursor-default disabled:opacity-60",
       )}
     >
       <span className={cn("inline-block h-5 w-5 rounded-full bg-white shadow transition-transform", checked ? "translate-x-5" : "translate-x-0.5")} />

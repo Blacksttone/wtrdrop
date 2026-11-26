@@ -93,6 +93,10 @@ export interface Customer {
   safety_stock: number;
   opening_balance: number;
   status: "active" | "inactive";
+  household_type: string | null;
+  members_count: number | null;
+  blocked_at: string | null;
+  block_reason: string | null;
   created_at: string;
 }
 
@@ -111,6 +115,9 @@ export interface CustomerListRow {
   can_price: number;
   balance: number;
   created_at: string;
+  household_type: string | null;
+  members_count: number | null;
+  blocked: boolean;
 }
 
 export interface CustomerStock {
@@ -325,4 +332,29 @@ export interface SupplierDashboard {
   low_stock_customers: { customer_id: string; customer_name: string; stock: number; level: string; predicted_empty_date: string | null; has_open_order: boolean }[];
   discrepancy_customers: { customer_id: string; customer_name: string; deliveries: number; total_shortage: number }[];
   outstanding_customers: { customer_id: string; customer_name: string; balance: number }[];
+}
+
+export type SupplierRole = "owner" | "manager" | "delivery";
+
+export interface StaffMember {
+  id: string;
+  user_id: string;
+  staff_name: string;
+  phone: string | null;
+  email: string | null;
+  role: "manager" | "delivery";
+  status: "active" | "blocked";
+  blocked_at: string | null;
+  created_at: string;
+}
+
+export interface StaffInvite {
+  id: string;
+  code: string;
+  role: "manager" | "delivery";
+  label: string | null;
+  expires_at: string;
+  used_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
 }

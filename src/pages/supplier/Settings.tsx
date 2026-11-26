@@ -3,7 +3,8 @@ import { QrCode, Upload } from "lucide-react";
 import * as React from "react";
 import { useAuth, useSupplier } from "@/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EditableSection } from "@/components/ui/editable-section";
 import { Field, Input, Switch, Textarea } from "@/components/ui/input";
 import { ErrorState, LoadingState, PageHeader } from "@/components/ui/states";
 import { formatDate } from "@/lib/format";
@@ -17,10 +18,11 @@ import { InviteDialog } from "./Customers";
 function BusinessCard() {
   const supplier = useSupplier();
   const { session, refresh } = useAuth();
-  const [f, setF] = React.useState({
+  const initial = () => ({
     business_name: supplier.business_name, owner_name: supplier.owner_name, phone: supplier.phone, email: supplier.email ?? "",
     address: supplier.address, delivery_area: supplier.delivery_area ?? "", ...supplier.billing_info,
   } as Record<string, string>);
+  const [f, setF] = React.useState(initial);
   const [logo, setLogo] = React.useState<File | null>(null);
   const save = useAction(async () => {
     const logo_url = logo && session ? await uploadLogo(logo, session.user.id) : supplier.logo_url;
@@ -33,9 +35,9 @@ function BusinessCard() {
   }, { success: "Business details saved", onSuccess: () => refresh() });
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   return (
-    <Card>
-      <CardHeader><CardTitle>Business profile</CardTitle><CardDescription>Supplier code <b className="tracking-widest text-primary">{supplier.business_code}</b> · Status {supplier.status}</CardDescription></CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2">
+    <EditableSection title="Business profile" description={<>Supplier code <b className="tracking-widest text-primary">{supplier.business_code}</b> · Status {supplier.status}</>}
+      onSave={() => save.mutateAsync(undefined)} onCancel={() => { setF(initial()); setLogo(null); }} saving={save.isPending}>
+      <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Business name" htmlFor="bn"><Input id="bn" value={f.business_name} onChange={set("business_name")} /></Field>
         <Field label="Owner name" htmlFor="on"><Input id="on" value={f.owner_name} onChange={set("owner_name")} /></Field>
         <Field label="Mobile" htmlFor="ph"><Input id="ph" value={f.phone} onChange={set("phone")} /></Field>
@@ -53,9 +55,8 @@ function BusinessCard() {
           </label>
           <input id="lg" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={(e) => setLogo(e.target.files?.[0] ?? null)} />
         </Field>
-        <Button className="sm:col-span-2" loading={save.isPending} onClick={() => save.mutate(undefined)}>Save business profile</Button>
-      </CardContent>
-    </Card>
+      </div>
+    </EditableSection>
   );
 }
 
@@ -76,9 +77,9 @@ function OperationsCard({ settings }: { settings: SupplierSettings }) {
   const num = (k: keyof SupplierSettings) => ({ value: String(f[k] ?? ""), onChange: (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value }) });
   const notif = f.notification_settings ?? {};
   return (
-    <Card>
-      <CardHeader><CardTitle>Pricing, delivery & billing</CardTitle><CardDescription>Price changes apply to new deliveries; recorded deliveries keep the price they were delivered at.</CardDescription></CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-3">
+    <EditableSection title="Pricing, delivery & billing" description="Price changes apply to new deliveries; recorded deliveries keep the price they were delivered at."
+      onSave={() => save.mutateAsync(undefined)} onCancel={() => setF({ ...settings })} saving={save.isPending}>
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Default price/can (₹)" htmlFor="p"><Input id="p" type="number" min={0} step="0.5" {...num("default_can_price")} /></Field>
         <Field label="Delivery lead time (days)" htmlFor="l"><Input id="l" type="number" min={0} max={30} {...num("delivery_lead_days")} /></Field>
         <Field label="Bulk order from (cans)" htmlFor="b"><Input id="b" type="number" min={2} {...num("bulk_order_threshold")} /></Field>
@@ -99,9 +100,8 @@ function OperationsCard({ settings }: { settings: SupplierSettings }) {
             </div>
           ))}
         </div>
-        <Button className="sm:col-span-3" loading={save.isPending} onClick={() => save.mutate(undefined)}>Save settings</Button>
-      </CardContent>
-    </Card>
+      </div>
+    </EditableSection>
   );
 }
 

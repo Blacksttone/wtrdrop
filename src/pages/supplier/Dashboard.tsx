@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, ClipboardList, IndianRupee, PackageCheck, Truck, Users, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useSupplier } from "@/auth/AuthProvider";
+import { useCanManage, useSupplier } from "@/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState, PageHeader, StatCard } from "@/components/ui/states";
@@ -26,6 +26,7 @@ function ListCard({ title, to, empty, children, count }: { title: string; to: st
 
 export default function SupplierDashboard() {
   const supplier = useSupplier();
+  const canManage = useCanManage();
   const { data: d, isLoading, error, refetch } = useQuery({ queryKey: ["supplier-dashboard"], queryFn: () => rpc<Dash>("get_supplier_dashboard"), refetchInterval: 60_000 });
   if (isLoading) return <LoadingState rows={6} />;
   if (error || !d) return <ErrorState error={error} onRetry={refetch} />;
@@ -41,9 +42,11 @@ export default function SupplierDashboard() {
         <StatCard label="Today's orders" value={d.todays_orders} hint={`${d.pending_orders} pending response`} icon={ClipboardList} tone={d.pending_orders ? "low" : "default"} />
         <StatCard label="Pending deliveries" value={d.pending_deliveries} hint={`${d.awaiting_confirmation} awaiting customer confirmation`} icon={Truck} />
         <StatCard label="Delivered today" value={`${d.delivered_today} cans`} hint={`${d.delivered_this_month} this month`} icon={PackageCheck} tone="ok" />
-        <StatCard label="Revenue this month" value={formatMoney(d.revenue_this_month)} hint="Confirmed deliveries" icon={IndianRupee} />
-        <StatCard label="Collected this month" value={formatMoney(d.collected_this_month)} icon={Wallet} tone="ok" />
-        <StatCard label="Outstanding" value={formatMoney(d.outstanding_total)} hint={`${d.pending_payment_verifications} payments to verify`} icon={AlertTriangle} tone={Number(d.outstanding_total) > 0 ? "low" : "default"} />
+        {canManage && <>
+          <StatCard label="Revenue this month" value={formatMoney(d.revenue_this_month)} hint="Confirmed deliveries" icon={IndianRupee} />
+          <StatCard label="Collected this month" value={formatMoney(d.collected_this_month)} icon={Wallet} tone="ok" />
+          <StatCard label="Outstanding" value={formatMoney(d.outstanding_total)} hint={`${d.pending_payment_verifications} payments to verify`} icon={AlertTriangle} tone={Number(d.outstanding_total) > 0 ? "low" : "default"} />
+        </>}
         <StatCard label="Low-stock customers" value={d.low_stock_customers.length} icon={AlertTriangle} tone={d.low_stock_customers.length ? "critical" : "default"} />
       </div>
 
@@ -70,15 +73,15 @@ export default function SupplierDashboard() {
             </li>
           ))}
         </ListCard>
-        <ListCard title="Outstanding bills" to="/supplier/payments" empty="No outstanding balances." count={d.outstanding_customers.length}>
+        {canManage && <ListCard title="Outstanding bills" to="/supplier/payments" empty="No outstanding balances." count={d.outstanding_customers.length}>
           {d.outstanding_customers.map((c) => (
             <li key={c.customer_id} className="flex items-center justify-between py-2.5">
               <Link to={`/supplier/customers/${c.customer_id}`} className="font-medium hover:underline">{c.customer_name}</Link>
               <span className="font-semibold text-amber-700">{formatMoney(c.balance)}</span>
             </li>
           ))}
-        </ListCard>
-        <ListCard title="Delivery discrepancies (30 days)" to="/supplier/reports?r=accuracy" empty="No shortages reported by customers." count={d.discrepancy_customers.length}>
+        </ListCard>}
+        <ListCard title="Delivery discrepancies (30 days)" to={canManage ? "/supplier/reports?r=accuracy" : "/supplier/deliveries"} empty="No shortages reported by customers." count={d.discrepancy_customers.length}>
           {d.discrepancy_customers.map((c) => (
             <li key={c.customer_id} className="flex items-center justify-between py-2.5">
               <Link to={`/supplier/customers/${c.customer_id}`} className="font-medium hover:underline">{c.customer_name}</Link>

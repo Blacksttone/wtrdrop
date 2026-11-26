@@ -3,7 +3,7 @@ import { Copy, QrCode, Search, UserPlus, Users } from "lucide-react";
 import * as React from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useSupplier } from "@/auth/AuthProvider";
+import { useCanManage, useSupplier } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/u
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { LevelPill } from "@/components/water/StockGauge";
 import { formatDate, formatMoney } from "@/lib/format";
+import { householdLabel } from "@/lib/household";
 import { useAction } from "@/lib/hooks";
 import { openExternal, siteUrl } from "@/lib/native";
 import { rpc } from "@/lib/supabase";
@@ -79,13 +80,14 @@ function AddCustomerDialog({ onClose }: { onClose: () => void }) {
 
 export default function Customers() {
   const { data, isLoading, error, refetch } = useCustomerList();
+  const canManage = useCanManage();
   const [q, setQ] = React.useState("");
   const [dialog, setDialog] = React.useState<"invite" | "add" | null>(null);
   const filtered = (data ?? []).filter((c) => `${c.customer_name} ${c.phone ?? ""} ${c.address}`.toLowerCase().includes(q.toLowerCase()));
   return (
     <div>
       <PageHeader title="Customers" description={`${data?.length ?? 0} customers`}
-        actions={<><Button variant="outline" onClick={() => setDialog("add")}><UserPlus /> Add offline customer</Button><Button onClick={() => setDialog("invite")}><QrCode /> Invite customers</Button></>} />
+        actions={<>{canManage && <Button variant="outline" onClick={() => setDialog("add")}><UserPlus /> Add offline customer</Button>}<Button onClick={() => setDialog("invite")}><QrCode /> Invite customers</Button></>} />
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input aria-label="Search customers" placeholder="Search name, phone, address" className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -95,19 +97,22 @@ export default function Customers() {
       ) : (
         <Card>
           <Table>
-            <THead><TR><TH>Customer</TH><TH>Stock</TH><TH>Runs out</TH><TH>Use/day</TH><TH>Price</TH><TH className="text-right">Balance</TH></TR></THead>
+            <THead><TR><TH>Customer</TH><TH>Stock</TH><TH>Runs out</TH><TH>Use/day</TH>{canManage && <><TH>Price</TH><TH className="text-right">Balance</TH></>}</TR></THead>
             <TBody>
               {filtered.map((c) => (
                 <TR key={c.id}>
                   <TD>
                     <Link to={`/supplier/customers/${c.id}`} className="font-medium text-primary hover:underline">{c.customer_name}</Link>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">{c.phone ?? "—"} {!c.has_app && <Badge variant="muted">offline</Badge>} {c.status === "inactive" && <Badge variant="muted">inactive</Badge>}</div>
+                    <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">{c.phone ?? "—"} {!c.has_app && <Badge variant="muted">offline</Badge>} {c.status === "inactive" && <Badge variant="muted">inactive</Badge>} {c.blocked && <Badge variant="danger">blocked</Badge>}</div>
+                    {(c.household_type || c.members_count) && <div className="text-xs text-muted-foreground">{householdLabel(c.household_type)}{c.members_count ? ` · ${c.members_count} members` : ""}</div>}
                   </TD>
                   <TD><div className="flex items-center gap-2"><b className="tabular-nums">{c.stock_confirmed ? c.current_stock : "?"}</b><LevelPill level={c.level} /></div></TD>
                   <TD>{formatDate(c.predicted_empty_date, "d MMM")}</TD>
                   <TD>{c.daily_consumption}</TD>
-                  <TD>{formatMoney(c.can_price)}</TD>
-                  <TD className={`text-right font-semibold ${Number(c.balance) > 0 ? "text-amber-700" : ""}`}>{formatMoney(c.balance)}</TD>
+                  {canManage && <>
+                    <TD>{formatMoney(c.can_price)}</TD>
+                    <TD className={`text-right font-semibold ${Number(c.balance) > 0 ? "text-amber-700" : ""}`}>{formatMoney(c.balance)}</TD>
+                  </>}
                 </TR>
               ))}
             </TBody>

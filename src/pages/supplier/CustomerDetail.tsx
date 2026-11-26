@@ -1,10 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Boxes, FileMinus, Pencil, Truck, Wallet } from "lucide-react";
+import { ArrowLeft, Boxes, FileMinus, Lock, Pencil, Truck, Unlock, Wallet } from "lucide-react";
 import * as React from "react";
 import { Link, useParams } from "react-router-dom";
+import { useCanManage } from "@/auth/AuthProvider";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { householdLabel } from "@/lib/household";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, Input, Select } from "@/components/ui/input";
+import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { ErrorState, LoadingState, PageHeader, StatCard } from "@/components/ui/states";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { LevelPill } from "@/components/water/StockGauge";
@@ -12,7 +15,7 @@ import { StatusBadge } from "@/components/water/StatusBadge";
 import { formatDate, formatDateTime, formatMoney, titleCase } from "@/lib/format";
 import { useAction } from "@/lib/hooks";
 import { useCustomerDeliveries, useCustomerSummary } from "@/lib/queries";
-import { supabase } from "@/lib/supabase";
+import { rpc, supabase } from "@/lib/supabase";
 import type { Customer, Delivery, InventoryTransaction } from "@/types/db";
 import { AdjustDeliveryDialog, CreditNoteDialog, RecordDeliveryDialog, RecordPaymentDialog, StockMovementDialog } from "./dialogs";
 
@@ -47,6 +50,22 @@ function EditCustomer({ customer }: { customer: Customer }) {
   );
 }
 
+function BlockDialog({ customer, onClose }: { customer: Customer; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [reason, setReason] = React.useState("");
+  const block = useAction(() => rpc("set_customer_blocked", { p_customer_id: customer.id, p_blocked: true, p_reason: reason }), {
+    success: `${customer.customer_name} blocked`, onSuccess: () => { qc.invalidateQueries(); onClose(); },
+  });
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent title={`Block ${customer.customer_name}?`} description="They will not be able to order, confirm deliveries or use the app until you unblock them. Their stock and bills are kept.">
+        <Field label="Reason (shown to the customer)" htmlFor="br"><Textarea id="br" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Bill unpaid for 3 months" /></Field>
+        <Button variant="destructive" className="mt-4 w-full" disabled={reason.trim().length < 3} loading={block.isPending} onClick={() => block.mutate(undefined)}><Lock /> Block customer</Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function CustomerDetail() {
   const { id = "" } = useParams();
   const customer = useQuery({ queryKey: ["customer", id], queryFn: async () => {
@@ -61,7 +80,12 @@ export default function CustomerDetail() {
     if (error) throw error;
     return data as InventoryTransaction[];
   } });
-  const [dialog, setDialog] = React.useState<null | "delivery" | "payment" | "movement" | "credit">(null);
+  const canManage = useCanManage();
+  const qc = useQueryClient();
+  const [dialog, setDialog] = React.useState<null | "delivery" | "payment" | "movement" | "credit" | "block">(null);
+  const unblock = useAction((id: string) => rpc("set_customer_blocked", { p_customer_id: id, p_blocked: false }), {
+    success: "Customer unblocked", onSuccess: () => qc.invalidateQueries(),
+  });
   const [adjusting, setAdjusting] = React.useState<Delivery | null>(null);
 
   if (customer.isLoading || summary.isLoading) return <LoadingState rows={5} />;
@@ -75,16 +99,25 @@ export default function CustomerDetail() {
       <PageHeader title={c.customer_name} description={`${c.address}${c.phone ? ` · ${c.phone}` : ""}${c.user_id ? "" : " · offline customer"}`}
         actions={<>
           <Button onClick={() => setDialog("delivery")}><Truck /> Delivery</Button>
-          <Button variant="outline" onClick={() => setDialog("payment")}><Wallet /> Payment</Button>
-          <Button variant="outline" onClick={() => setDialog("movement")}><Boxes /> Stock movement</Button>
-          <Button variant="outline" onClick={() => setDialog("credit")}><FileMinus /> Credit note</Button>
+          {canManage && <>
+            <Button variant="outline" onClick={() => setDialog("payment")}><Wallet /> Payment</Button>
+            <Button variant="outline" onClick={() => setDialog("movement")}><Boxes /> Stock movement</Button>
+            <Button variant="outline" onClick={() => setDialog("credit")}><FileMinus /> Credit note</Button>
+            {c.blocked_at
+              ? <Button variant="success" loading={unblock.isPending} onClick={() => unblock.mutate(c.id)}><Unlock /> Unblock</Button>
+              : <Button variant="outline" className="text-destructive" onClick={() => setDialog("block")}><Lock /> Block</Button>}
+          </>}
         </>} />
+      {c.blocked_at && (
+        <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"><b>Blocked</b> on {formatDate(c.blocked_at)} — {c.block_reason}</p>
+      )}
+      <p className="text-sm text-muted-foreground">Household: <b className="text-foreground">{householdLabel(c.household_type)}</b>{c.members_count ? ` · ${c.members_count} members` : ""}</p>
       {c.delivery_instructions && <p className="rounded-lg bg-secondary p-3 text-sm"><b>Delivery instructions:</b> {c.delivery_instructions}</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Current stock" value={p?.stock_confirmed ? `${p.current_stock} cans` : "Unconfirmed"} hint={p && <LevelPill level={p.level} />} />
         <StatCard label="Runs out" value={p?.predicted_empty_date ? formatDate(p.predicted_empty_date, "d MMM") : "—"} hint={p?.avg_daily_consumption ? `${p.avg_daily_consumption} cans/day (${p.basis})` : "No usage data"} />
         <StatCard label="Recommended order" value={p?.order_now ? `${p.recommended_order_quantity} cans` : "Not needed"} tone={p?.order_now ? "low" : "ok"} />
-        <StatCard label="Balance" value={formatMoney(summary.data?.outstanding_balance)} hint={summary.data && `+ ${formatMoney(summary.data.unbilled.amount)} unbilled`} />
+        {canManage && <StatCard label="Balance" value={formatMoney(summary.data?.outstanding_balance)} hint={summary.data && `+ ${formatMoney(summary.data.unbilled.amount)} unbilled`} />}
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
@@ -101,7 +134,7 @@ export default function CustomerDetail() {
                     {d.confirmed_quantity ?? "—"}{d.adjusted_quantity ? ` (${d.adjusted_quantity > 0 ? "+" : ""}${d.adjusted_quantity})` : ""}
                   </TD>
                   <TD><StatusBadge status={d.status} /></TD>
-                  <TD>{d.status === "confirmed" && <Button variant="ghost" size="icon" aria-label="Adjust delivery" onClick={() => setAdjusting(d)}><Pencil /></Button>}</TD>
+                  <TD>{canManage && d.status === "confirmed" && <Button variant="ghost" size="icon" aria-label="Adjust delivery" onClick={() => setAdjusting(d)}><Pencil /></Button>}</TD>
                 </TR>
               ))}
             </TBody>
@@ -124,12 +157,13 @@ export default function CustomerDetail() {
           </Table>
         </Card>
       </div>
-      <EditCustomer customer={c} />
+      {canManage && <EditCustomer customer={c} />}
       {dialog === "delivery" && <RecordDeliveryDialog customerId={c.id} onClose={() => setDialog(null)} />}
       {dialog === "payment" && <RecordPaymentDialog customerId={c.id} onClose={() => setDialog(null)} />}
       {dialog === "movement" && <StockMovementDialog customerId={c.id} onClose={() => setDialog(null)} />}
       {dialog === "credit" && <CreditNoteDialog customerId={c.id} onClose={() => setDialog(null)} />}
       {adjusting && <AdjustDeliveryDialog delivery={adjusting} onClose={() => setAdjusting(null)} />}
+      {dialog === "block" && <BlockDialog customer={c} onClose={() => setDialog(null)} />}
     </div>
   );
 }

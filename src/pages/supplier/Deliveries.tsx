@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Pencil, Truck, XCircle } from "lucide-react";
 import * as React from "react";
 import { useSearchParams } from "react-router-dom";
-import { useSupplier } from "@/auth/AuthProvider";
+import { useCanManage, useSupplier } from "@/auth/AuthProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,6 +22,7 @@ export default function SupplierDeliveries() {
   const [status, setStatus] = React.useState("all");
   const [adjusting, setAdjusting] = React.useState<Delivery | null>(null);
   const creating = params.get("new") === "1";
+  const canManage = useCanManage();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["deliveries", "supplier", supplier.id, status],
     queryFn: async () => {
@@ -68,7 +69,7 @@ export default function SupplierDeliveries() {
                   <TD>{d.discrepancy == null ? "—" : d.discrepancy === 0 ? <span className="text-stock-ok">exact</span> : <span className={d.discrepancy < 0 ? "font-semibold text-stock-critical" : "text-primary"}>{d.discrepancy > 0 ? "+" : ""}{d.discrepancy}</span>}</TD>
                   <TD><StatusBadge status={d.status} /></TD>
                   <TD>
-                    {d.status === "confirmed" && <Button variant="ghost" size="icon" aria-label="Adjust" onClick={() => setAdjusting(d)}><Pencil /></Button>}
+                    {canManage && d.status === "confirmed" && <Button variant="ghost" size="icon" aria-label="Adjust" onClick={() => setAdjusting(d)}><Pencil /></Button>}
                     {d.status === "awaiting_confirmation" && <Button variant="ghost" size="icon" aria-label="Cancel delivery" onClick={() => { if (confirm("Cancel this unconfirmed delivery?")) cancel.mutate(d.id); }}><XCircle /></Button>}
                   </TD>
                 </TR>

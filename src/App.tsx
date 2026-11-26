@@ -1,10 +1,10 @@
 import {
-  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Truck, Users,
+  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Truck, UserCog, Users,
 } from "lucide-react";
 import { lazy, Suspense, useEffect } from "react";
 import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
-import { FullPageLoader, RequireAuth, RequireRole, RoleHome } from "./auth/guards";
+import { FullPageLoader, RequireAuth, RequireRole, RequireSupplierRole, RoleHome } from "./auth/guards";
 import { Logo } from "./components/brand/Logo";
 import { CustomerLayout } from "./components/layout/CustomerLayout";
 import { DashboardLayout, type NavItem } from "./components/layout/DashboardLayout";
@@ -43,6 +43,7 @@ const SupplierBills = lazy(() => import("./pages/supplier/Bills"));
 const SupplierPayments = lazy(() => import("./pages/supplier/Payments"));
 const Reports = lazy(() => import("./pages/supplier/Reports"));
 const SupplierSettings = lazy(() => import("./pages/supplier/Settings"));
+const Team = lazy(() => import("./pages/supplier/Team"));
 
 const Adm = () => import("./pages/admin/Admin");
 const AdminDashboard = lazy(() => Adm().then((m) => ({ default: m.AdminDashboard })));
@@ -51,17 +52,28 @@ const AdminCustomers = lazy(() => Adm().then((m) => ({ default: m.AdminCustomers
 const AdminPlans = lazy(() => Adm().then((m) => ({ default: m.AdminPlans })));
 const AdminActivity = lazy(() => Adm().then((m) => ({ default: m.AdminActivity })));
 
-const supplierNav: NavItem[] = [
-  { to: "/supplier", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/supplier/customers", label: "Customers", icon: Users },
-  { to: "/supplier/deliveries", label: "Deliveries", icon: Truck },
-  { to: "/supplier/orders", label: "Orders", icon: ClipboardList },
-  { to: "/supplier/inventory", label: "Inventory", icon: Boxes },
-  { to: "/supplier/bills", label: "Monthly Bills", icon: FileText },
-  { to: "/supplier/payments", label: "Payments", icon: CreditCard },
-  { to: "/supplier/reports", label: "Reports", icon: BarChart3 },
-  { to: "/supplier/settings", label: "Business Settings", icon: Settings },
+type Role = "owner" | "manager" | "delivery";
+const ALL: Role[] = ["owner", "manager", "delivery"];
+const MANAGERS: Role[] = ["owner", "manager"];
+const supplierNav: (NavItem & { roles: Role[] })[] = [
+  { to: "/supplier", label: "Dashboard", icon: LayoutDashboard, end: true, roles: ALL },
+  { to: "/supplier/customers", label: "Customers", icon: Users, roles: ALL },
+  { to: "/supplier/deliveries", label: "Deliveries", icon: Truck, roles: ALL },
+  { to: "/supplier/orders", label: "Orders", icon: ClipboardList, roles: ALL },
+  { to: "/supplier/inventory", label: "Inventory", icon: Boxes, roles: ALL },
+  { to: "/supplier/bills", label: "Monthly Bills", icon: FileText, roles: MANAGERS },
+  { to: "/supplier/payments", label: "Payments", icon: CreditCard, roles: MANAGERS },
+  { to: "/supplier/reports", label: "Reports", icon: BarChart3, roles: MANAGERS },
+  { to: "/supplier/team", label: "Co-workers", icon: UserCog, roles: MANAGERS },
+  { to: "/supplier/settings", label: "Business Settings", icon: Settings, roles: ["owner"] },
 ];
+
+function SupplierShell() {
+  const { supplierRole } = useAuth();
+  const nav = supplierNav.filter((n) => supplierRole && n.roles.includes(supplierRole));
+  const title = supplierRole === "owner" ? "Supplier · Owner" : supplierRole === "manager" ? "Supplier · Manager" : "Supplier · Delivery";
+  return <DashboardLayout nav={nav} title={title} notificationsPath="/supplier/notifications" banner={<SuspendedBanner />} />;
+}
 const adminNav: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/admin/suppliers", label: "Suppliers", icon: Building2 },
@@ -160,18 +172,23 @@ export default function App() {
           </Route>
 
           <Route element={<RequireRole role="supplier" />}>
-            <Route path="/supplier" element={<DashboardLayout nav={supplierNav} title="Supplier" notificationsPath="/supplier/notifications" banner={<SuspendedBanner />} />}>
+            <Route path="/supplier" element={<SupplierShell />}>
               <Route index element={<SupplierDashboard />} />
               <Route path="customers" element={<Customers />} />
               <Route path="customers/:id" element={<CustomerDetail />} />
               <Route path="deliveries" element={<SupplierDeliveries />} />
               <Route path="orders" element={<SupplierOrders />} />
               <Route path="inventory" element={<Inventory />} />
-              <Route path="bills" element={<SupplierBills />} />
-              <Route path="payments" element={<SupplierPayments />} />
-              <Route path="reports" element={<Reports />} />
-              <Route path="settings" element={<SupplierSettings />} />
               <Route path="notifications" element={<Notifications />} />
+              <Route element={<RequireSupplierRole roles={MANAGERS} />}>
+                <Route path="bills" element={<SupplierBills />} />
+                <Route path="payments" element={<SupplierPayments />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="team" element={<Team />} />
+              </Route>
+              <Route element={<RequireSupplierRole roles={["owner"]} />}>
+                <Route path="settings" element={<SupplierSettings />} />
+              </Route>
             </Route>
           </Route>
 

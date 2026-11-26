@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useSupplier } from "@/auth/AuthProvider";
+import { useCanManage, useSupplier } from "@/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState, PageHeader, StatCard } from "@/components/ui/states";
@@ -15,6 +15,7 @@ import { useCustomerList } from "./dialogs";
 
 export default function Inventory() {
   const supplier = useSupplier();
+  const canManage = useCanManage();
   const { data, isLoading, error, refetch } = useCustomerList();
   const requests = useQuery({
     queryKey: ["correction-requests", supplier.id],
@@ -54,10 +55,10 @@ export default function Inventory() {
                     <p className="font-medium">{r.customers?.customer_name} · {formatDate(r.consumption_date)}</p>
                     <p className="text-sm text-muted-foreground">{r.current_quantity} → {r.requested_quantity} cans · “{r.reason}”</p>
                   </div>
-                  <div className="flex gap-2">
+                  {canManage && <div className="flex gap-2">
                     <Button size="sm" variant="success" onClick={() => resolve.mutate({ id: r.id, approve: true })}><Check /> Approve</Button>
                     <Button size="sm" variant="outline" onClick={() => resolve.mutate({ id: r.id, approve: false })}><X /> Decline</Button>
-                  </div>
+                  </div>}
                 </li>
               ))}
             </ul>
