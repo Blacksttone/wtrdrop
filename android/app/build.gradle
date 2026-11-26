@@ -16,8 +16,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing comes from environment variables (scripts/android-publish.sh
+    // restores the keystore from the Supabase Vault). Every update MUST use the
+    // same key as the installed app, or Android refuses to install it.
+    signingConfigs {
+        release {
+            if (System.getenv("WD_KEYSTORE_FILE")) {
+                storeFile file(System.getenv("WD_KEYSTORE_FILE"))
+                storePassword System.getenv("WD_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("WD_KEY_ALIAS")
+                keyPassword System.getenv("WD_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv("WD_KEYSTORE_FILE")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
