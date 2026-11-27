@@ -60,6 +60,7 @@ export function CansWithCustomerCard({ customerId, canCorrect }: { customerId: s
     success: "Can count updated", onSuccess: () => { invalidateCans(qc); setOpen(false); },
   });
   const n = cans.data ?? 0;
+  if (cans.isError) return null;
   return (
     <div className="rounded-xl border bg-card p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Your cans with customer</p>
@@ -93,6 +94,7 @@ export function CanReportCard() {
   const [date, setDate] = React.useState(todayISO());
   const q = useQuery({ queryKey: ["can-report", date], queryFn: () => rpc<CanReport>("supplier_can_report", { p_date: date }), refetchInterval: 60_000 });
   const r = q.data;
+  if (q.isError) return null;
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">

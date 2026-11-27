@@ -32,10 +32,19 @@ export function RecordDeliveryDialog({ onClose, customerId, order }: {
   const emptyValue = empty ?? actual;
   const selected = customers.data?.find((c) => c.id === cid);
   const save = useAction(
-    () => rpc<Delivery>("record_delivery", {
-      p_customer_id: cid, p_expected_quantity: Number(expected), p_actual_quantity: Number(actual),
-      p_delivery_date: date, p_order_id: order?.id ?? null, p_notes: notes || null, p_empty_cans: Number(emptyValue) || 0,
-    }),
+    async () => {
+      const args = {
+        p_customer_id: cid, p_expected_quantity: Number(expected), p_actual_quantity: Number(actual),
+        p_delivery_date: date, p_order_id: order?.id ?? null, p_notes: notes || null,
+      };
+      try {
+        return await rpc<Delivery>("record_delivery", { ...args, p_empty_cans: Number(emptyValue) || 0 });
+      } catch (e) {
+        // Server not yet updated with empty-can tracking: save the delivery without it.
+        if ((e as { code?: string }).code !== "PGRST202") throw e;
+        return rpc<Delivery>("record_delivery", args);
+      }
+    },
     {
       success: (d) => (d.status === "confirmed" ? "Delivery recorded and confirmed (offline customer)" : "Delivery recorded — customer asked to confirm"),
       onSuccess: () => { invalidate(); onClose(); },
