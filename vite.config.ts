@@ -1,9 +1,14 @@
+import { existsSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Phone push needs Firebase config inside the APK; without it the plugin would crash the app.
+    __PUSH_ENABLED__: JSON.stringify(existsSync(fileURLToPath(new URL("./android/app/google-services.json", import.meta.url)))),
+  },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },

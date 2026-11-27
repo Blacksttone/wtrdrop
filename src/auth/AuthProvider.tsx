@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { supabase } from "@/lib/supabase";
+import { disablePush } from "@/lib/push";
 import type { AccountMembership, AccountRole, Customer, CustomerAccount, Profile, Supplier, SupplierRole } from "@/types/db";
 
 interface AuthState {
@@ -148,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await qc.invalidateQueries({ queryKey: ["me"] });
     },
     signOut: async () => {
+      await disablePush().catch(() => undefined);
       await supabase.auth.signOut();
       qc.clear();
     },

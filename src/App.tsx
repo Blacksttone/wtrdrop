@@ -12,6 +12,7 @@ import { UpdatePrompt } from "./components/layout/UpdatePrompt";
 import { DashboardLayout, type NavItem } from "./components/layout/DashboardLayout";
 import { Button } from "./components/ui/button";
 import { initNativeApp, isNativeApp } from "./lib/native";
+import { enablePush } from "./lib/push";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 
 const Landing = lazy(() => import("./pages/public/Landing"));
@@ -160,6 +161,12 @@ export default function App() {
       ),
     [navigate, qc],
   );
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    enablePush((link) => navigate(link)).catch((e) => console.warn("push setup failed", e));
+  }, [userId, navigate]);
   if (!isSupabaseConfigured) return <ConfigMissing />;
   return (
     <Suspense fallback={<FullPageLoader />}>

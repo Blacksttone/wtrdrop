@@ -11,6 +11,8 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
   },
   plugins: {
+    // Show order alerts even while the app is open.
+    PushNotifications: { presentationOptions: ["badge", "sound", "alert"] },
     SplashScreen: {
       launchShowDuration: 1200,
       launchAutoHide: true,
