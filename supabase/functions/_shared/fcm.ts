@@ -78,5 +78,5 @@ export async function sendPush(sa: ServiceAccount, message: ReturnType<typeof bu
   const body = await res.text();
   if (res.status === 404 || /UNREGISTERED|registration-token-not-registered/.test(body)
       || (res.status === 400 && /INVALID_ARGUMENT/.test(body) && /token/i.test(body))) return "invalid";
-  throw new Error(`fcm ${res.status}: ${body.slice(0, 200)}`);
+  throw new Error(`fcm ${res.status}: ${body.replace(/\s+/g, " ").slice(0, 450)}`);
 }

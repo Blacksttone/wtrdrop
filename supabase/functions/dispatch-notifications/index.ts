@@ -22,7 +22,9 @@ Deno.serve(async (req) => {
   const rawSa = Deno.env.get("FCM_SERVICE_ACCOUNT");
   const sa = readServiceAccount(rawSa);
   // Status only (never the secret itself): helps check the setup.
-  const pushSetup = sa ? "ready" : rawSa ? "invalid FCM_SERVICE_ACCOUNT (not a service-account JSON)" : "FCM_SERVICE_ACCOUNT not set";
+  const pushSetup = sa
+    ? { status: "ready", project: sa.project_id, account: sa.client_email } // identifiers only, never the key
+    : rawSa ? "invalid FCM_SERVICE_ACCOUNT (not a service-account JSON)" : "FCM_SERVICE_ACCOUNT not set";
   const { data: batch, error } = await db.rpc("claim_notification_batch", { p_limit: 50 });
   if (error) return json({ error: error.message }, 500);
 
