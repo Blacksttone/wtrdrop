@@ -77,6 +77,7 @@ export async function buildInvoicePdf(invoice: Invoice, items: InvoiceItem[]): P
   const lines: [string, string, boolean?][] = [
     ["Current month deliveries", rupee(invoice.subtotal)],
     ...(Number(invoice.tax_amount) > 0 ? [[`${S.tax_label ?? "Tax"} (${invoice.tax_rate}%)`, rupee(invoice.tax_amount)] as [string, string]] : []),
+    ...(Number(invoice.platform_fee) > 0 ? [["Waterdrop service fee", rupee(invoice.platform_fee)] as [string, string]] : []),
     ["Previous balance", rupee(invoice.previous_balance)],
     ["Payments received", `- ${rupee(invoice.payments_received)}`],
     ...(Number(invoice.credits) > 0 ? [["Credits / adjustments", `- ${rupee(invoice.credits)}`] as [string, string]] : []),

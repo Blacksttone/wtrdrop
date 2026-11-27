@@ -247,6 +247,7 @@ export interface Invoice {
   };
   customer_snapshot: { customer_name: string; address: string; phone?: string | null; branch_name?: string | null; branches?: string[] | null };
   superseded_by: string | null;
+  platform_fee: number;
   generated_at: string;
   customers?: Pick<Customer, "customer_name">;
 }
@@ -256,6 +257,8 @@ export interface InvoiceItem {
   invoice_id: string;
   delivery_id: string | null;
   delivery_adjustment_id: string | null;
+  fee_customer_id?: string | null;
+  fee_month?: string | null;
   item_date: string;
   description: string;
   quantity: number;
@@ -434,4 +437,51 @@ export interface ConnectionRequest {
   created_at: string;
   suppliers?: { business_name: string } | null;
   customer_accounts?: { name: string; account_type: AccountType } | null;
+}
+
+export interface PlatformPricing {
+  home_fee: number;
+  store_branch_fee: number;
+  company_single_fee: number;
+  company_head_fee: number;
+  company_extra_branch_fee: number;
+  supplier_fee: number;
+  coworker_fee: number;
+  fees_enabled: boolean;
+  owner_upi_id: string | null;
+  owner_payee_name: string | null;
+}
+
+export interface PlatformInvoice {
+  id: string;
+  supplier_id: string;
+  invoice_number: string;
+  month: string;
+  subscription_fee: number;
+  coworkers: number;
+  coworker_fee: number;
+  customer_fees: number;
+  total: number;
+  status: "unpaid" | "paid" | "waived";
+  due_date: string;
+  paid_at: string | null;
+}
+
+export interface PlatformInvoiceRow extends Omit<PlatformInvoice, "id" | "invoice_number"> {
+  invoice_id: string;
+  business_name: string;
+  payment_reference: string | null;
+}
+
+export interface PlatformSummary {
+  month: string;
+  free_month: boolean;
+  subscription_fee: number;
+  coworkers: number;
+  coworker_fee: number;
+  customer_fees_so_far: number;
+  estimate: number;
+  unpaid_total: number;
+  prices: { supplier: number; coworker: number; home: number; store_branch: number; company_single: number; company_head: number; company_extra_branch: number };
+  pay_to: { upi_id: string | null; name: string | null };
 }

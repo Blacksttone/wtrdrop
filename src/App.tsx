@@ -1,5 +1,5 @@
 import {
-  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Smartphone, Truck, UserCog, Users,
+  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Smartphone, Truck, UserCog, Users, Receipt, Wallet,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
@@ -57,6 +57,8 @@ const AdminCustomers = lazy(() => Adm().then((m) => ({ default: m.AdminCustomers
 const AdminPlans = lazy(() => Adm().then((m) => ({ default: m.AdminPlans })));
 const AdminActivity = lazy(() => Adm().then((m) => ({ default: m.AdminActivity })));
 const AdminAppUpdates = lazy(() => import("./pages/admin/AppUpdates"));
+const AdminEarnings = lazy(() => import("./pages/admin/Earnings"));
+const WaterdropBill = lazy(() => import("./pages/supplier/WaterdropBill"));
 
 type Role = "owner" | "manager" | "delivery";
 const ALL: Role[] = ["owner", "manager", "delivery"];
@@ -71,6 +73,7 @@ const supplierNav: (NavItem & { roles: Role[] })[] = [
   { to: "/supplier/payments", label: "Payments", icon: CreditCard, roles: MANAGERS },
   { to: "/supplier/reports", label: "Reports", icon: BarChart3, roles: MANAGERS },
   { to: "/supplier/team", label: "Co-workers", icon: UserCog, roles: MANAGERS },
+  { to: "/supplier/waterdrop-bill", label: "Waterdrop bill", icon: Receipt, roles: MANAGERS },
   { to: "/supplier/settings", label: "Business Settings", icon: Settings, roles: ["owner"] },
 ];
 
@@ -84,6 +87,7 @@ const adminNav: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/admin/suppliers", label: "Suppliers", icon: Building2 },
   { to: "/admin/customers", label: "Customers", icon: Users },
+  { to: "/admin/earnings", label: "Earnings", icon: Wallet },
   { to: "/admin/plans", label: "Plans", icon: Package },
   { to: "/admin/app-updates", label: "App updates", icon: Smartphone },
   { to: "/admin/activity", label: "System activity", icon: Activity },
@@ -216,6 +220,7 @@ export default function App() {
                 <Route path="payments" element={<SupplierPayments />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="team" element={<Team />} />
+                <Route path="waterdrop-bill" element={<WaterdropBill />} />
               </Route>
               <Route element={<RequireSupplierRole roles={["owner"]} />}>
                 <Route path="settings" element={<SupplierSettings />} />
@@ -231,6 +236,7 @@ export default function App() {
               <Route path="plans" element={<AdminPlans />} />
               <Route path="activity" element={<AdminActivity />} />
               <Route path="app-updates" element={<AdminAppUpdates />} />
+              <Route path="earnings" element={<AdminEarnings />} />
               <Route path="notifications" element={<Notifications />} />
             </Route>
           </Route>

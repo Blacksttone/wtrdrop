@@ -56,7 +56,8 @@ export function InvoiceDetail({ invoice, onClose }: { invoice: Invoice; onClose:
         <dl className="mt-4 space-y-1.5 text-sm">
           {[
             ["Delivered cans", `${invoice.total_quantity}`],
-            ["This period", formatMoney(invoice.subtotal)],
+            ["Water this period", formatMoney(invoice.subtotal)],
+            ...(Number(invoice.platform_fee) > 0 ? [["Waterdrop service fee", formatMoney(invoice.platform_fee)]] : []),
             ...(Number(invoice.tax_amount) > 0 ? [[`Tax (${invoice.tax_rate}%)`, formatMoney(invoice.tax_amount)]] : []),
             ["Previous balance", formatMoney(invoice.previous_balance)],
             ["Payments received", `− ${formatMoney(invoice.payments_received)}`],
