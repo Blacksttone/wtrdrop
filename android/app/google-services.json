@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "410370649440",
+    "project_id": "waterdrop-7541f",
+    "storage_bucket": "waterdrop-7541f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:410370649440:android:67f7dcd849b2fb6026c205",
+        "android_client_info": {
+          "package_name": "com.waterdrop.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-NUriK6qhCuHvBS_ytk1XhY9JIJJQbgY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
