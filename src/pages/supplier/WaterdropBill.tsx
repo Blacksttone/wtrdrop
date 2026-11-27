@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Copy, IndianRupee, Smartphone } from "lucide-react";
+import { Copy, CreditCard, IndianRupee, Smartphone } from "lucide-react";
+import * as React from "react";
+import { errorMessage } from "@/lib/errors";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyState, ErrorState, LoadingState, PageHeader, StatCard } from "@/components/ui/states";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatDate, formatMoney } from "@/lib/format";
-import { openExternal } from "@/lib/native";
+import { isNativeApp, openExternal, siteUrl } from "@/lib/native";
 import { rpc, supabase } from "@/lib/supabase";
 import type { PlatformInvoice, PlatformSummary } from "@/types/db";
 
@@ -30,6 +32,26 @@ export default function WaterdropBill() {
   if (summary.isLoading) return <LoadingState rows={4} />;
   if (summary.error || !summary.data) return <ErrorState error={summary.error} onRetry={summary.refetch} />;
   const s = summary.data;
+  const [paying, setPaying] = React.useState<string | null>(null);
+  const [onlineOff, setOnlineOff] = React.useState(false);
+  const payOnline = async (b: PlatformInvoice) => {
+    setPaying(b.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("cashfree-platform/create", { body: { invoice_id: b.id } });
+      if (error) {
+        const ctx = (error as { context?: Response }).context;
+        const detail = ctx ? await ctx.json().catch(() => null) : null;
+        if (ctx?.status === 503) setOnlineOff(true);
+        throw new Error(detail?.error ?? error.message);
+      }
+      const url = `${siteUrl()}/pay?s=${encodeURIComponent(data.payment_session_id)}&m=${data.mode}`;
+      if (isNativeApp) await openExternal(url); else window.location.href = `/pay?s=${encodeURIComponent(data.payment_session_id)}&m=${data.mode}`;
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setPaying(null);
+    }
+  };
   const pay = (b: PlatformInvoice) => {
     if (!s.pay_to.upi_id) return toast.error("Payment details are not set yet. Please contact Waterdrop support.");
     openExternal(upiPayUrl(s.pay_to.upi_id, s.pay_to.name, Number(b.total), b.invoice_number));
@@ -54,7 +76,7 @@ export default function WaterdropBill() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle>Bills</CardTitle><CardDescription>Pay with any UPI app. Waterdrop marks it paid after checking.</CardDescription></CardHeader>
+        <CardHeader><CardTitle>Bills</CardTitle><CardDescription>"Pay online" (UPI, card, net banking via Cashfree) marks the bill paid automatically. Paying straight to the UPI ID is checked by Waterdrop first.</CardDescription></CardHeader>
         <CardContent>
           {bills.isLoading ? <LoadingState /> : !bills.data?.length ? (
             <EmptyState icon={IndianRupee} title="No bills yet" description="Your first bill appears on the 1st of next month." />
@@ -70,7 +92,12 @@ export default function WaterdropBill() {
                     <TD>{formatMoney(b.customer_fees)}</TD>
                     <TD className="text-right font-semibold">{formatMoney(b.total)}</TD>
                     <TD>{b.status === "paid" ? <Badge variant="success">paid</Badge> : b.status === "waived" ? <Badge variant="muted">no charge</Badge> : <Badge variant="danger">due {formatDate(b.due_date, "d MMM")}</Badge>}</TD>
-                    <TD>{b.status === "unpaid" && <Button size="sm" onClick={() => pay(b)}><Smartphone /> Pay with UPI</Button>}</TD>
+                    <TD>{b.status === "unpaid" && (
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {!onlineOff && <Button size="sm" loading={paying === b.id} onClick={() => payOnline(b)}><CreditCard /> Pay online</Button>}
+                        <Button size="sm" variant="outline" onClick={() => pay(b)}><Smartphone /> UPI app</Button>
+                      </div>
+                    )}</TD>
                   </TR>
                 ))}
               </TBody>

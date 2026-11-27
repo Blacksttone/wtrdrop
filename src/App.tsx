@@ -59,6 +59,8 @@ const AdminActivity = lazy(() => Adm().then((m) => ({ default: m.AdminActivity }
 const AdminAppUpdates = lazy(() => import("./pages/admin/AppUpdates"));
 const AdminEarnings = lazy(() => import("./pages/admin/Earnings"));
 const WaterdropBill = lazy(() => import("./pages/supplier/WaterdropBill"));
+const PayCheckout = lazy(() => import("./pages/public/Pay").then((m) => ({ default: m.PayCheckout })));
+const PayDone = lazy(() => import("./pages/public/Pay").then((m) => ({ default: m.PayDone })));
 
 type Role = "owner" | "manager" | "delivery";
 const ALL: Role[] = ["owner", "manager", "delivery"];
@@ -158,6 +160,9 @@ export default function App() {
             supabase.auth.startAutoRefresh();
             // Coming back to the app: look for a newer version again.
             qc.invalidateQueries({ queryKey: ["app-update-check"] });
+            // Back from the payment page in the browser: refresh bills.
+            qc.invalidateQueries({ queryKey: ["platform-invoices"] });
+            qc.invalidateQueries({ queryKey: ["platform-summary"] });
           } else {
             supabase.auth.stopAutoRefresh();
           }
@@ -184,6 +189,8 @@ export default function App() {
         <Route path="/join" element={<Join />} />
         <Route path="/join/:token" element={<Join />} />
         <Route path="/disabled" element={<Disabled />} />
+        <Route path="/pay" element={<PayCheckout />} />
+        <Route path="/pay/done" element={<PayDone />} />
 
         <Route element={<RequireAuth />}>
           <Route path="/home" element={<RoleHome />} />
