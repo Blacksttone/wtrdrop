@@ -19,7 +19,10 @@ Deno.serve(async (req) => {
 
   const appUrl = Deno.env.get("APP_URL") ?? "https://waterdrop.app";
   const emailOn = Boolean(Deno.env.get("RESEND_API_KEY"));
-  const sa = readServiceAccount(Deno.env.get("FCM_SERVICE_ACCOUNT"));
+  const rawSa = Deno.env.get("FCM_SERVICE_ACCOUNT");
+  const sa = readServiceAccount(rawSa);
+  // Status only (never the secret itself): helps check the setup.
+  const pushSetup = sa ? "ready" : rawSa ? "invalid FCM_SERVICE_ACCOUNT (not a service-account JSON)" : "FCM_SERVICE_ACCOUNT not set";
   const { data: batch, error } = await db.rpc("claim_notification_batch", { p_limit: 50 });
   if (error) return json({ error: error.message }, 500);
 
@@ -57,5 +60,5 @@ Deno.serve(async (req) => {
       failed++;
     }
   }
-  return json({ claimed: batch?.length ?? 0, sent, failed, push: Boolean(sa) });
+  return json({ claimed: batch?.length ?? 0, sent, failed, push: pushSetup });
 });
