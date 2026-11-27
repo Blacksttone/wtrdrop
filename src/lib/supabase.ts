@@ -2,8 +2,18 @@ import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 import { createClient, type SupportedStorage } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+/**
+ * URLs and API keys are plain ASCII. Values pasted into a hosting dashboard can carry
+ * invisible or "smart" characters (zero-width spaces, curly quotes, newlines) that make
+ * every request fail with "String contains non ISO-8859-1 code point"; drop them.
+ */
+export function cleanConfigValue(v: string | undefined): string | undefined {
+  const cleaned = v?.replace(/[^\x21-\x7e]/g, "").replace(/^["'`]+|["'`]+$/g, "");
+  return cleaned || undefined;
+}
+
+const url = cleanConfigValue(import.meta.env.VITE_SUPABASE_URL as string | undefined);
+const anonKey = cleanConfigValue(import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
