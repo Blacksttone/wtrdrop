@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMessage, channelFor, readServiceAccount, signServiceJwt } from "./fcm";
+import { buildMessage, channelFor, readServiceAccount, sendPush, signServiceJwt } from "./fcm";
 
 describe("fcm", () => {
   it("reads only complete service accounts", () => {
@@ -30,5 +30,20 @@ describe("fcm", () => {
     expect(ok).toBe(true);
     const claims = JSON.parse(new TextDecoder().decode(dec(c)));
     expect(claims).toMatchObject({ iss: "svc@p.iam.gserviceaccount.com", scope: "https://www.googleapis.com/auth/firebase.messaging", iat: 1000, exp: 4600 });
+  });
+  it("drops tokens from another Firebase project", async () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string) => String(url).includes("oauth2")
+      ? new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }))
+      : new Response('{"error":{"code":403,"details":[{"errorCode":"SENDER_ID_MISMATCH"}]}}', { status: 403 })) as typeof fetch;
+    try {
+      const kp = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign"]);
+      const der = new Uint8Array(await crypto.subtle.exportKey("pkcs8", kp.privateKey));
+      const sa = { project_id: "p", client_email: "a@p", private_key: `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...der))}\n-----END PRIVATE KEY-----` };
+      const m = buildMessage("tok", { title: "t", message: "m", link: null, notification_type: "new_order", severity: "info" });
+      expect(await sendPush(sa, m)).toBe("invalid");
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });

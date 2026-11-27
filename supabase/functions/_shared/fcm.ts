@@ -76,7 +76,8 @@ export async function sendPush(sa: ServiceAccount, message: ReturnType<typeof bu
   });
   if (res.ok) return "ok";
   const body = await res.text();
-  if (res.status === 404 || /UNREGISTERED|registration-token-not-registered/.test(body)
+  // Token from another Firebase project (e.g. after switching projects) or app uninstalled: drop it.
+  if (res.status === 404 || /UNREGISTERED|registration-token-not-registered|SENDER_ID_MISMATCH/.test(body)
       || (res.status === 400 && /INVALID_ARGUMENT/.test(body) && /token/i.test(body))) return "invalid";
   throw new Error(`fcm ${res.status}: ${body.replace(/\s+/g, " ").slice(0, 450)}`);
 }
