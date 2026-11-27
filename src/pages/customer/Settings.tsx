@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditableSection } from "@/components/ui/editable-section";
 import { LocationCard } from "@/components/water/LocationControls";
+import { AppVersionCard } from "@/components/layout/AppVersionCard";
 import { Field, Input, Select, Switch } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/states";
 import { useAction } from "@/lib/hooks";
@@ -169,6 +170,8 @@ export default function CustomerSettings() {
           </div>
         ))}
       </EditableSection>
+
+      <AppVersionCard />
 
       <div className="grid gap-2 sm:grid-cols-2">
         {canAdmin && <Button variant="outline" asChild><Link to={`/onboarding/customer?add=1${activeAccount ? `&account=${activeAccount.id}` : ""}`}><Plus /> Add a branch / supplier</Link></Button>}

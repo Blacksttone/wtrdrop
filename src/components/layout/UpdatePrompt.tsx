@@ -7,6 +7,13 @@ import { formatSize, useAppUpdateCheck } from "@/lib/appUpdate";
 import { openExternal } from "@/lib/native";
 
 const DISMISS_KEY = "wd.updateDismissed";
+export const SHOW_UPDATE_EVENT = "wd:show-update";
+
+/** Clears a previous "Later" so the update dialog shows again (used by "Check for updates"). */
+export function showUpdatePromptAgain() {
+  try { localStorage.removeItem(DISMISS_KEY); } catch { /* ignore */ }
+  window.dispatchEvent(new Event(SHOW_UPDATE_EVENT));
+}
 
 /** Shows "Update available" in the Android app; blocks the app when the update is mandatory. */
 export function UpdatePrompt() {
@@ -14,6 +21,11 @@ export function UpdatePrompt() {
   const [dismissed, setDismissed] = React.useState<number | null>(() => {
     try { return Number(localStorage.getItem(DISMISS_KEY)) || null; } catch { return null; }
   });
+  React.useEffect(() => {
+    const show = () => setDismissed(null);
+    window.addEventListener(SHOW_UPDATE_EVENT, show);
+    return () => window.removeEventListener(SHOW_UPDATE_EVENT, show);
+  }, []);
   const latest = data?.latest;
   if (!latest) return null;
 

@@ -13,6 +13,7 @@ import { rpc } from "@/lib/supabase";
 import type { SupplierDashboard as Dash } from "@/types/db";
 import { useConnectionRequests } from "./Customers";
 import { CanReportCard } from "@/components/water/CanControls";
+import { AppVersionCard } from "@/components/layout/AppVersionCard";
 
 function ListCard({ title, to, empty, children, count }: { title: string; to: string; empty: string; children: React.ReactNode; count: number }) {
   return (
@@ -102,6 +103,7 @@ export default function SupplierDashboard() {
           ))}
         </ListCard>
       </div>
+      <div className="mt-6"><AppVersionCard /></div>
     </div>
   );
 }

@@ -31,7 +31,7 @@ export function useAppUpdateCheck() {
   return useQuery({
     queryKey: ["app-update-check"],
     enabled: isNativeApp,
-    staleTime: 30 * 60_000,
+    staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
     retry: false,
     queryFn: async () => {

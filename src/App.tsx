@@ -1,6 +1,7 @@
 import {
   Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Smartphone, Truck, UserCog, Users,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
 import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
@@ -142,13 +143,22 @@ function ConfigMissing() {
 
 export default function App() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   useEffect(
     () =>
       initNativeApp(
         () => navigate(-1),
-        (active) => (active ? supabase.auth.startAutoRefresh() : supabase.auth.stopAutoRefresh()),
+        (active) => {
+          if (active) {
+            supabase.auth.startAutoRefresh();
+            // Coming back to the app: look for a newer version again.
+            qc.invalidateQueries({ queryKey: ["app-update-check"] });
+          } else {
+            supabase.auth.stopAutoRefresh();
+          }
+        },
       ),
-    [navigate],
+    [navigate, qc],
   );
   if (!isSupabaseConfigured) return <ConfigMissing />;
   return (
