@@ -130,6 +130,7 @@ export interface CustomerListRow {
   account_type: AccountType | null;
   branch_name: string | null;
   bill_to_customer_id: string | null;
+  cans_out: number;
 }
 
 export interface CustomerStock {
@@ -174,6 +175,7 @@ export interface Delivery {
   confirmed_by_supplier: boolean;
   discrepancy: number | null;
   claim_gap: number | null;
+  empty_cans_collected: number;
   created_at: string;
   customers?: Pick<Customer, "customer_name">;
 }

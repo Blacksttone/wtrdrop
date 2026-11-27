@@ -10,10 +10,12 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { useCustomerSummary } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { QuickConsumption } from "./QuickConsumption";
+import { useCansWithCustomer } from "@/components/water/CanControls";
 
 export default function CustomerHome() {
   const customer = useCustomer();
   const { data: s, isLoading, error, refetch } = useCustomerSummary(customer.id);
+  const cans = useCansWithCustomer(customer.id);
 
   if (isLoading) return <div className="space-y-4"><Skeleton className="h-72" /><Skeleton className="h-20" /><Skeleton className="h-32" /></div>;
   if (error || !s) return <ErrorState error={error} onRetry={refetch} />;
@@ -94,6 +96,11 @@ export default function CustomerHome() {
 
       <QuickConsumption customerId={customer.id} today={p.today} />
 
+      {(cans.data ?? 0) > 0 && (
+        <p className="rounded-xl border bg-card p-3 text-sm">
+          <b>{cans.data}</b> of your supplier's cans are with you (full + empty). Keep the empty cans ready to give back at the next delivery.
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <Link to="/app/orders" className="block">
           <Card className="h-full transition-shadow hover:shadow-md">

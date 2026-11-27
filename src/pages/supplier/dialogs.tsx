@@ -28,11 +28,13 @@ export function RecordDeliveryDialog({ onClose, customerId, order }: {
   const [actual, setActual] = React.useState(String(order?.quantity ?? ""));
   const [date, setDate] = React.useState(todayISO());
   const [notes, setNotes] = React.useState("");
+  const [empty, setEmpty] = React.useState<string | null>(null); // null = same as delivered
+  const emptyValue = empty ?? actual;
   const selected = customers.data?.find((c) => c.id === cid);
   const save = useAction(
     () => rpc<Delivery>("record_delivery", {
       p_customer_id: cid, p_expected_quantity: Number(expected), p_actual_quantity: Number(actual),
-      p_delivery_date: date, p_order_id: order?.id ?? null, p_notes: notes || null,
+      p_delivery_date: date, p_order_id: order?.id ?? null, p_notes: notes || null, p_empty_cans: Number(emptyValue) || 0,
     }),
     {
       success: (d) => (d.status === "confirmed" ? "Delivery recorded and confirmed (offline customer)" : "Delivery recorded — customer asked to confirm"),
@@ -54,8 +56,11 @@ export function RecordDeliveryDialog({ onClose, customerId, order }: {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Expected quantity" htmlFor="exp" hint="What was ordered / planned"><Input id="exp" type="number" min={0} max={1000} required value={expected} onChange={(e) => setExpected(e.target.value)} /></Field>
-            <Field label="Actually delivered" htmlFor="act" hint="Cans handed over"><Input id="act" type="number" min={0} max={1000} required value={actual} onChange={(e) => setActual(e.target.value)} /></Field>
+            <Field label="Actually delivered" htmlFor="act" hint="Full cans handed over"><Input id="act" type="number" min={0} max={1000} required value={actual} onChange={(e) => setActual(e.target.value)} /></Field>
           </div>
+          <Field label="Empty cans taken back" htmlFor="emp" hint={selected ? `${selected.cans_out} of your cans are with this customer now` : "Empty cans collected for refilling"}>
+            <Input id="emp" type="number" inputMode="numeric" min={0} max={1000} value={emptyValue} onChange={(e) => setEmpty(e.target.value)} />
+          </Field>
           <Field label="Delivery date" htmlFor="dd"><Input id="dd" type="date" max={todayISO()} value={date} onChange={(e) => setDate(e.target.value)} /></Field>
           <Field label="Notes (optional)" htmlFor="nt"><Input id="nt" value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
           {selected && !selected.has_app && <p className="rounded-lg bg-secondary p-3 text-xs">{selected.customer_name} has no app account, so this delivery will be confirmed on their behalf and flagged as supplier-confirmed.</p>}

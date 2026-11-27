@@ -12,6 +12,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { rpc } from "@/lib/supabase";
 import type { SupplierDashboard as Dash } from "@/types/db";
 import { useConnectionRequests } from "./Customers";
+import { CanReportCard } from "@/components/water/CanControls";
 
 function ListCard({ title, to, empty, children, count }: { title: string; to: string; empty: string; children: React.ReactNode; count: number }) {
   return (
@@ -60,6 +61,7 @@ export default function SupplierDashboard() {
         <StatCard label="Low-stock customers" value={d.low_stock_customers.length} icon={AlertTriangle} tone={d.low_stock_customers.length ? "critical" : "default"} />
       </div>
 
+      <div className="mt-5"><CanReportCard /></div>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <ListCard title="Needs delivery today" to="/supplier/orders" empty="No deliveries due today." count={d.needs_delivery_today.length}>
           {d.needs_delivery_today.map((o) => (

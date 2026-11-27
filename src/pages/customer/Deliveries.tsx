@@ -65,7 +65,7 @@ export default function CustomerDeliveries() {
                     <PackageCheck className="h-8 w-8 text-amber-600" />
                     <div className="flex-1">
                       <p className="font-bold">{d.actual_quantity} cans delivered</p>
-                      <p className="text-sm text-muted-foreground">{formatDate(d.delivery_date, "EEE, d MMM")}{d.notes ? ` · ${d.notes}` : ""}</p>
+                      <p className="text-sm text-muted-foreground">{formatDate(d.delivery_date, "EEE, d MMM")}{d.empty_cans_collected > 0 ? ` · ${d.empty_cans_collected} empty cans taken back` : ""}{d.notes ? ` · ${d.notes}` : ""}</p>
                     </div>
                     <Button onClick={() => setConfirming(d)}>Confirm</Button>
                   </CardContent>
@@ -85,6 +85,7 @@ export default function CustomerDeliveries() {
                         <p className="text-xs text-muted-foreground">
                           Expected {d.expected_quantity} · Supplier recorded {d.actual_quantity}
                           {d.adjusted_quantity !== 0 && ` · Corrected ${d.adjusted_quantity > 0 ? "+" : ""}${d.adjusted_quantity}`}
+                          {d.empty_cans_collected > 0 && ` · ${d.empty_cans_collected} empty taken back`}
                         </p>
                         {d.customer_note && <p className="text-xs text-muted-foreground">“{d.customer_note}”</p>}
                       </div>

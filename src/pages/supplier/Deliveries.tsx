@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/input";
 import { EmptyState, ErrorState, LoadingState, PageHeader, StatCard } from "@/components/ui/states";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { EditEmptyCans } from "@/components/water/CanControls";
 import { StatusBadge } from "@/components/water/StatusBadge";
 import { formatDate } from "@/lib/format";
 import { useAction } from "@/lib/hooks";
@@ -57,7 +58,7 @@ export default function SupplierDeliveries() {
       ) : (
         <Card>
           <Table>
-            <THead><TR><TH>Date</TH><TH>Customer</TH><TH>Expected</TH><TH>Delivered</TH><TH>Confirmed</TH><TH>Difference</TH><TH>Status</TH><TH /></TR></THead>
+            <THead><TR><TH>Date</TH><TH>Customer</TH><TH>Expected</TH><TH>Delivered</TH><TH>Empty back</TH><TH>Confirmed</TH><TH>Difference</TH><TH>Status</TH><TH /></TR></THead>
             <TBody>
               {data.map((d) => (
                 <TR key={d.id}>
@@ -65,6 +66,7 @@ export default function SupplierDeliveries() {
                   <TD className="font-medium">{d.customers?.customer_name}{d.order_id && <Badge variant="muted" className="ml-1">order</Badge>}</TD>
                   <TD>{d.expected_quantity}</TD>
                   <TD>{d.actual_quantity}</TD>
+                  <TD><EditEmptyCans delivery={d} /></TD>
                   <TD>{d.confirmed_quantity ?? "—"}{d.adjusted_quantity ? <span className="text-xs text-muted-foreground"> ({d.adjusted_quantity > 0 ? "+" : ""}{d.adjusted_quantity})</span> : null}{d.confirmed_by_supplier && <Badge variant="muted" className="ml-1">by you</Badge>}</TD>
                   <TD>{d.discrepancy == null ? "—" : d.discrepancy === 0 ? <span className="text-stock-ok">exact</span> : <span className={d.discrepancy < 0 ? "font-semibold text-stock-critical" : "text-primary"}>{d.discrepancy > 0 ? "+" : ""}{d.discrepancy}</span>}</TD>
                   <TD><StatusBadge status={d.status} /></TD>

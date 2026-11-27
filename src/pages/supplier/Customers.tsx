@@ -198,7 +198,7 @@ export default function Customers() {
       ) : (
         <Card>
           <Table>
-            <THead><TR><TH>Customer</TH><TH>Stock</TH><TH>Runs out</TH><TH>Use/day</TH>{canManage && <><TH>Price</TH><TH className="text-right">Balance</TH></>}</TR></THead>
+            <THead><TR><TH>Customer</TH><TH>Stock</TH><TH>Runs out</TH><TH>Use/day</TH><TH>Your cans there</TH>{canManage && <><TH>Price</TH><TH className="text-right">Balance</TH></>}</TR></THead>
             <TBody>
               {filtered.map((c) => (
                 <TR key={c.id}>
@@ -213,6 +213,7 @@ export default function Customers() {
                   <TD><div className="flex items-center gap-2"><b className="tabular-nums">{c.stock_confirmed ? c.current_stock : "?"}</b><LevelPill level={c.level} /></div></TD>
                   <TD>{formatDate(c.predicted_empty_date, "d MMM")}</TD>
                   <TD>{c.daily_consumption}</TD>
+                  <TD className={c.cans_out < 0 ? "font-semibold text-stock-critical" : ""}>{c.cans_out}</TD>
                   {canManage && <>
                     <TD>{formatMoney(c.can_price)}</TD>
                     <TD className={`text-right font-semibold ${Number(c.balance) > 0 ? "text-amber-700" : ""}`}>{c.balance == null ? <span className="text-xs font-normal text-muted-foreground">on head bill</span> : formatMoney(c.balance)}</TD>

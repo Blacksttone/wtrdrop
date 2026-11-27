@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/water/StatusBadge";
 import { formatDate, formatDateTime, formatMoney, titleCase } from "@/lib/format";
 import { useAction } from "@/lib/hooks";
 import { LocationCard } from "@/components/water/LocationControls";
+import { CansWithCustomerCard, EditEmptyCans } from "@/components/water/CanControls";
 import { useCustomerDeliveries, useCustomerSummary } from "@/lib/queries";
 import { rpc, supabase } from "@/lib/supabase";
 import type { Customer, Delivery, InventoryTransaction } from "@/types/db";
@@ -148,19 +149,21 @@ export default function CustomerDetail() {
         <StatCard label="Current stock" value={p?.stock_confirmed ? `${p.current_stock} cans` : "Unconfirmed"} hint={p && <LevelPill level={p.level} />} />
         <StatCard label="Runs out" value={p?.predicted_empty_date ? formatDate(p.predicted_empty_date, "d MMM") : "—"} hint={p?.avg_daily_consumption ? `${p.avg_daily_consumption} cans/day (${p.basis})` : "No usage data"} />
         <StatCard label="Recommended order" value={p?.order_now ? `${p.recommended_order_quantity} cans` : "Not needed"} tone={p?.order_now ? "low" : "ok"} />
+        <CansWithCustomerCard customerId={c.id} canCorrect={canManage} />
         {canManage && <StatCard label="Balance" value={formatMoney(summary.data?.outstanding_balance)} hint={summary.data && `+ ${formatMoney(summary.data.unbilled.amount)} unbilled`} />}
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Deliveries</CardTitle></CardHeader>
           <Table>
-            <THead><TR><TH>Date</TH><TH>Exp</TH><TH>Sent</TH><TH>Confirmed</TH><TH>Status</TH><TH /></TR></THead>
+            <THead><TR><TH>Date</TH><TH>Exp</TH><TH>Sent</TH><TH>Empty</TH><TH>Confirmed</TH><TH>Status</TH><TH /></TR></THead>
             <TBody>
               {(deliveries.data ?? []).slice(0, 30).map((d) => (
                 <TR key={d.id}>
                   <TD>{formatDate(d.delivery_date, "d MMM")}</TD>
                   <TD>{d.expected_quantity}</TD>
                   <TD>{d.actual_quantity}</TD>
+                  <TD><EditEmptyCans delivery={d} /></TD>
                   <TD className={(d.discrepancy ?? 0) < 0 ? "font-semibold text-stock-critical" : ""}>
                     {d.confirmed_quantity ?? "—"}{d.adjusted_quantity ? ` (${d.adjusted_quantity > 0 ? "+" : ""}${d.adjusted_quantity})` : ""}
                   </TD>
