@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, LogOut, Lock, Share2, Trash2, Unlock, UserPlus, Users } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { Copy, LogOut, Lock, QrCode, Share2, Trash2, Unlock, UserPlus, Users } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { ACCOUNT_TYPES, branchLabel, useAuth } from "@/auth/AuthProvider";
@@ -11,7 +12,8 @@ import { Field, Input, Select, Switch } from "@/components/ui/input";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/ui/states";
 import { formatDate } from "@/lib/format";
 import { useAction } from "@/lib/hooks";
-import { openExternal } from "@/lib/native";
+import { openExternal, siteUrl } from "@/lib/native";
+import { familyInviteUrl } from "@/lib/qr";
 import { rpc, supabase } from "@/lib/supabase";
 import type { AccountMember, AccountRole, Customer, CustomerAccount, MemberInvite } from "@/types/db";
 
@@ -54,7 +56,7 @@ function InviteDialog({ account, myRole, branches, onClose }: { account: Custome
     p_account_id: account.id, p_role: role, p_all_branches: all || branches.length < 2, p_branch_ids: all ? [] : ids, p_label: label || null,
   }), { onSuccess: (r) => { setInvite(r); qc.invalidateQueries({ queryKey: ["member-invites", account.id] }); } });
   const message = invite
-    ? `Join "${account.name}" on Waterdrop so you can order water and confirm deliveries.\n1. Install Waterdrop and sign up as "I need water".\n2. Tap "I have a family / team code" and enter: ${invite.code}\n(Valid for 7 days, one person only.)`
+    ? `Join "${account.name}" on Waterdrop so you can order water and confirm deliveries.\n1. Install Waterdrop and sign up as "I need water".\n2. Tap "I have a family / team code" and enter: ${invite.code} (or scan the QR code)\nOr open: ${familyInviteUrl(siteUrl(), invite.code)}\n(Valid for 7 days, one person only.)`
     : "";
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -75,6 +77,8 @@ function InviteDialog({ account, myRole, branches, onClose }: { account: Custome
         ) : (
           <div className="space-y-4 text-center">
             <p className="text-sm text-muted-foreground">{meta.teamLabel} code ({ROLE_INFO[invite.role].label})</p>
+            <div className="mx-auto w-fit rounded-2xl border bg-white p-3"><QRCodeSVG value={familyInviteUrl(siteUrl(), invite.code)} size={180} fgColor="#0b5cad" /></div>
+            <p className="text-xs text-muted-foreground">They scan this in Waterdrop: "I have a family / team code" → Scan QR</p>
             <p className="select-all text-4xl font-extrabold tracking-[0.25em] text-primary">{invite.code}</p>
             <p className="text-xs text-muted-foreground">Works once, valid until {formatDate(invite.expires_at)}.</p>
             <div className="grid grid-cols-2 gap-2">
@@ -116,6 +120,7 @@ export default function CustomerTeam() {
   const meta = account ? ACCOUNT_TYPES[account.account_type] : ACCOUNT_TYPES.home;
   const [adding, setAdding] = React.useState(false);
   const [access, setAccess] = React.useState<AccountMember | null>(null);
+  const [qr, setQr] = React.useState<MemberInvite | null>(null);
 
   const members = useQuery({
     queryKey: ["account-members", account?.id], enabled: Boolean(account),
@@ -170,7 +175,10 @@ export default function CustomerTeam() {
                     <p className="font-mono text-lg font-bold tracking-widest">{i.code}</p>
                     <p className="text-xs text-muted-foreground">{i.label ?? "No name"} · {ROLE_INFO[i.role].label} · valid till {formatDate(i.expires_at)}</p>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => revoke.mutate(i.id)}>Cancel</Button>
+                  <div className="flex shrink-0 gap-1">
+                    <Button size="sm" variant="outline" aria-label="Show QR code" onClick={() => setQr(i)}><QrCode /> QR</Button>
+                    <Button size="sm" variant="ghost" onClick={() => revoke.mutate(i.id)}>Cancel</Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -224,6 +232,17 @@ export default function CustomerTeam() {
       )}
       {adding && <InviteDialog account={account} myRole={myRole} branches={branches} onClose={() => setAdding(false)} />}
       {access && <BranchAccessDialog member={access} branches={branches} onClose={() => setAccess(null)} />}
+      {qr && (
+        <Dialog open onOpenChange={(o) => !o && setQr(null)}>
+          <DialogContent title={`${meta.teamLabel} code ${qr.code}`} description={`${qr.label ?? "No name"} · ${ROLE_INFO[qr.role].label} · valid till ${formatDate(qr.expires_at)}`}>
+            <div className="space-y-3 text-center">
+              <div className="mx-auto w-fit rounded-2xl border bg-white p-3"><QRCodeSVG value={familyInviteUrl(siteUrl(), qr.code)} size={220} fgColor="#0b5cad" /></div>
+              <p className="text-sm text-muted-foreground">Let them scan this in Waterdrop: "I have a family / team code" → <b>Scan QR</b>.</p>
+              <p className="select-all font-mono text-3xl font-extrabold tracking-[0.25em] text-primary">{qr.code}</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

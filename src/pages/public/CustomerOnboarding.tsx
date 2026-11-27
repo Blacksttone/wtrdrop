@@ -15,7 +15,7 @@ import { errorMessage } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
 import { HOUSEHOLD_TYPES, suggestedDailyCans } from "@/lib/household";
 import type { GeoPoint } from "@/lib/location";
-import { parseSupplierQr } from "@/lib/qr";
+import { parseFamilyQr, parseSupplierQr } from "@/lib/qr";
 import { rpc, supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type { AccountType, ConnectionRequest, CustomerAccount } from "@/types/db";
@@ -85,11 +85,12 @@ export function CustomerOnboarding() {
 
   const [accountId, setAccountId] = React.useState<string>(params.get("account") ?? "");
   const account: CustomerAccount | undefined = accounts.find((a) => a.id === accountId) ?? (adminAccounts.length === 1 && !params.get("new") ? adminAccounts[0] : undefined);
-  const [mode, setMode] = React.useState<"choose" | "join">("choose");
+  const familyParam = parseFamilyQr(params.get("family") ?? "");
+  const [mode, setMode] = React.useState<"choose" | "join">(familyParam ? "join" : "choose");
   const [type, setType] = React.useState<AccountType>("home");
   const [accName, setAccName] = React.useState(profile?.full_name ?? "");
   const [creating, setCreating] = React.useState(false);
-  const [joinCode, setJoinCode] = React.useState("");
+  const [joinCode, setJoinCode] = React.useState(familyParam ?? "");
   const [joining, setJoining] = React.useState(false);
 
   const [f, setF] = React.useState({ branch: "", name: profile?.full_name ?? "", phone: profile?.phone ?? "", address: "", instructions: "", opening: "", daily: "2", household: "", members: "" });
@@ -118,7 +119,7 @@ export function CustomerOnboarding() {
 
   if (loadingProfile) return <FullPageLoader />;
   if (profile?.role !== "customer") return <Navigate to="/home" replace />;
-  if (customers.length > 0 && !adding && !token && !params.get("code") && !sent) return <Navigate to="/app" replace />;
+  if (customers.length > 0 && !adding && !token && !params.get("code") && !sent && !familyParam) return <Navigate to="/app" replace />;
 
   const suggestion = suggestedDailyCans(Number(f.members) || 0);
   const branchLabel = account ? ACCOUNT_TYPES[account.account_type].branchWord : "home";
@@ -234,8 +235,16 @@ export function CustomerOnboarding() {
         <PendingRequests />
         {mode === "join" ? (
           <Card>
-            <CardHeader><CardTitle>Join your family or team</CardTitle><CardDescription>Enter the 8-letter code the account owner shared with you.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Join your family or team</CardTitle><CardDescription>Scan the QR code or enter the 8-letter code the account owner shared with you.</CardDescription></CardHeader>
             <CardContent>
+              <div className="mb-3">
+                <QrScanButton label="Scan family / team QR" onResult={(text) => {
+                  const code = parseFamilyQr(text);
+                  if (!code) return toast.error("That QR code is not a Waterdrop family / team code.");
+                  setJoinCode(code);
+                  toast.success("Code scanned. Tap Join.");
+                }} />
+              </div>
               <form onSubmit={joinAccount} className="flex gap-2">
                 <Input aria-label="Family or team code" placeholder="CODE" className="uppercase tracking-widest" maxLength={8} autoCapitalize="characters"
                   value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} />

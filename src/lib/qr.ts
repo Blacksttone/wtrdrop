@@ -21,3 +21,21 @@ export function parseSupplierQr(raw: string): SupplierQr | null {
   }
   return /^[A-Za-z0-9]{6,10}$/.test(text) ? { code: text.toUpperCase() } : null;
 }
+
+/**
+ * Family / team invite QR: https://<site>/onboarding/customer?family=ABCD2345
+ * (a plain 8-letter code is accepted too, when typed or scanned from text).
+ */
+export function familyInviteUrl(site: string, code: string) {
+  return `${site.replace(/\/$/, "")}/onboarding/customer?family=${encodeURIComponent(code)}`;
+}
+
+export function parseFamilyQr(raw: string): string | null {
+  const text = raw.trim();
+  const ok = (c: string | null) => (c && /^[A-Za-z0-9]{8}$/.test(c) ? c.toUpperCase() : null);
+  try {
+    return ok(new URL(text).searchParams.get("family"));
+  } catch {
+    return ok(text);
+  }
+}
