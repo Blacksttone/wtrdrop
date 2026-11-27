@@ -6,6 +6,7 @@ import { ACCOUNT_TYPES, useAuth, useCustomer } from "@/auth/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditableSection } from "@/components/ui/editable-section";
+import { LocationCard } from "@/components/water/LocationControls";
 import { Field, Input, Select, Switch } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/states";
 import { useAction } from "@/lib/hooks";
@@ -112,6 +113,8 @@ export default function CustomerSettings() {
           <Field label="Branch name" htmlFor="brn"><Input id="brn" value={f.branch} maxLength={80} placeholder="e.g. Anna Nagar branch" onChange={set("branch")} /></Field>
         </EditableSection>
       )}
+
+      <LocationCard customer={customer} onSaved={() => refresh()} />
 
       <EditableSection title="Household" description="Who uses the water here." onSave={() => save.mutateAsync(undefined)} onCancel={reset} saving={save.isPending}>
         <div className="grid gap-4 sm:grid-cols-2">

@@ -74,8 +74,8 @@ export async function saveOrShareFile(blob: Blob, filename: string, title = file
 /** Opens a link outside the app (WhatsApp, payment pages, etc.). */
 export async function openExternal(url: string) {
   if (isNativeApp) {
-    if (url.startsWith("https://wa.me") || url.startsWith("whatsapp:")) {
-      window.location.href = url; // let Android hand it to WhatsApp
+    if (url.startsWith("https://wa.me") || url.startsWith("whatsapp:") || url.startsWith("https://www.google.com/maps")) {
+      window.location.href = url; // let Android hand it to WhatsApp / Google Maps
       return;
     }
     await Browser.open({ url });

@@ -8,11 +8,13 @@ import { FullPageLoader } from "@/auth/guards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { LocationPicker } from "@/components/water/LocationControls";
 import { QrScanButton } from "@/components/water/QrScanButton";
 import { StatusBadge } from "@/components/water/StatusBadge";
 import { errorMessage } from "@/lib/errors";
 import { formatDate } from "@/lib/format";
 import { HOUSEHOLD_TYPES, suggestedDailyCans } from "@/lib/household";
+import type { GeoPoint } from "@/lib/location";
 import { parseSupplierQr } from "@/lib/qr";
 import { rpc, supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -99,6 +101,7 @@ export function CustomerOnboarding() {
   const [code, setCode] = React.useState(params.get("code") ?? pending.code ?? "");
   const [lookupCode, setLookupCode] = React.useState(token ? "" : code);
   const [submitting, setSubmitting] = React.useState(false);
+  const [loc, setLoc] = React.useState<GeoPoint | null>(null);
   const [sent, setSent] = React.useState(false);
 
   const search = useQuery({
@@ -163,6 +166,15 @@ export function CustomerOnboarding() {
     p_daily_consumption: Number(f.daily) || 0,
   });
 
+  // Location is optional: a failure here never undoes the connection.
+  async function saveLocation(fn: string, target: Record<string, string>) {
+    try {
+      await rpc(fn, { ...target, p_latitude: loc!.latitude, p_longitude: loc!.longitude, p_accuracy_m: loc!.accuracy == null ? null : Math.round(loc!.accuracy) });
+    } catch (e) {
+      toast.warning(`Connected, but the location was not saved: ${errorMessage(e)}`);
+    }
+  }
+
   async function submit() {
     if (!account) return;
     if (f.name.trim().length < 2 || f.address.trim().length < 3) return toast.error("Enter the contact name and delivery address");
@@ -170,9 +182,10 @@ export function CustomerOnboarding() {
     try {
       if (tab === "search") {
         if (!picked) return toast.error("Choose a supplier from the list");
-        await rpc("request_supplier_connection", {
+        const req = await rpc<{ id: string }>("request_supplier_connection", {
           p_account_id: account.id, p_supplier_id: picked.supplier_id, p_contact_name: f.name, p_phone: f.phone || null, p_address: f.address, ...branchArgs(),
         });
+        if (loc) await saveLocation("set_request_location", { p_request_id: req.id });
         qc.invalidateQueries({ queryKey: ["my-connection-requests"] });
         setSent(true);
         toast.success(`Request sent to ${picked.business_name}`);
@@ -182,6 +195,7 @@ export function CustomerOnboarding() {
           p_customer_name: f.name, p_phone: f.phone || null, p_address: f.address, p_business_code: token ? null : lookupCode,
           p_invite_token: token || null, p_account_id: account.id, ...branchArgs(),
         });
+        if (loc) await saveLocation("set_customer_location", { p_customer_id: c.id });
         clearInvite();
         await refresh();
         setActiveCustomerId(c.id);
@@ -282,6 +296,10 @@ export function CustomerOnboarding() {
             <Field label="Mobile number" htmlFor="p"><Input id="p" type="tel" pattern="\+?[0-9 ]{7,16}" value={f.phone} onChange={set("phone")} /></Field>
             <Field label="Delivery address" htmlFor="a" className="sm:col-span-2"><Textarea id="a" required minLength={3} value={f.address} onChange={set("address")} /></Field>
             <Field label="Delivery instructions (optional)" htmlFor="i" className="sm:col-span-2"><Input id="i" placeholder="e.g. 2nd floor, ring the bell" value={f.instructions} onChange={set("instructions")} /></Field>
+            <div className="sm:col-span-2">
+              <LocationPicker value={loc} onChange={setLoc} label="Use my current location"
+                hint="Optional. Tap this only while you are at the delivery address, so the delivery person can find you on Maps." />
+            </div>
             <Field label={account.account_type === "home" ? "Who lives here?" : "Type of place"} htmlFor="ht">
               <Select id="ht" value={f.household} onChange={set("household")}>
                 <option value="">Select…</option>

@@ -1,6 +1,6 @@
 import { QRCodeSVG } from "qrcode.react";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Check, Copy, Home, Inbox, QrCode, Search, Store, UserPlus, Users, X } from "lucide-react";
+import { Building2, Check, Copy, Home, Inbox, Navigation, QrCode, Search, Store, UserPlus, Users, X } from "lucide-react";
 import * as React from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,7 +12,10 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { EmptyState, ErrorState, LoadingState, PageHeader } from "@/components/ui/states";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { LocationPicker } from "@/components/water/LocationControls";
 import { LevelPill } from "@/components/water/StockGauge";
+import { errorMessage } from "@/lib/errors";
+import { directionsUrl, formatAccuracy, type GeoPoint } from "@/lib/location";
 import { formatDate, formatMoney } from "@/lib/format";
 import { householdLabel } from "@/lib/household";
 import { useAction } from "@/lib/hooks";
@@ -55,11 +58,23 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
 
 function AddCustomerDialog({ onClose }: { onClose: () => void }) {
   const [f, setF] = React.useState({ name: "", phone: "", address: "", instructions: "", price: "", daily: "2", opening: "", balance: "0" });
-  const save = useAction(() => rpc("supplier_add_customer", {
-    p_customer_name: f.name, p_phone: f.phone || null, p_address: f.address, p_delivery_instructions: f.instructions || null,
-    p_can_price: f.price === "" ? null : Number(f.price), p_daily_consumption: Number(f.daily) || 0,
-    p_opening_stock: f.opening === "" ? null : Number(f.opening), p_opening_balance: Number(f.balance) || 0,
-  }), { success: "Customer added", invalidate: [["supplier-customers"]], onSuccess: onClose });
+  const [loc, setLoc] = React.useState<GeoPoint | null>(null);
+  const save = useAction(async () => {
+    const c = await rpc<{ id: string }>("supplier_add_customer", {
+      p_customer_name: f.name, p_phone: f.phone || null, p_address: f.address, p_delivery_instructions: f.instructions || null,
+      p_can_price: f.price === "" ? null : Number(f.price), p_daily_consumption: Number(f.daily) || 0,
+      p_opening_stock: f.opening === "" ? null : Number(f.opening), p_opening_balance: Number(f.balance) || 0,
+    });
+    if (loc) {
+      try {
+        await rpc("set_customer_location", { p_customer_id: c.id, p_latitude: loc.latitude, p_longitude: loc.longitude,
+          p_accuracy_m: loc.accuracy == null ? null : Math.round(loc.accuracy) });
+      } catch (e) {
+        toast.warning(`Customer added, but the location was not saved: ${errorMessage(e)}`);
+      }
+    }
+    return c;
+  }, { success: "Customer added", invalidate: [["supplier-customers"]], onSuccess: onClose });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -69,6 +84,9 @@ function AddCustomerDialog({ onClose }: { onClose: () => void }) {
           <Field label="Mobile" htmlFor="p"><Input id="p" type="tel" pattern="\+?[0-9 ]{7,16}" value={f.phone} onChange={set("phone")} /></Field>
           <Field label="Address" htmlFor="a" className="sm:col-span-2"><Textarea id="a" required minLength={3} value={f.address} onChange={set("address")} /></Field>
           <Field label="Delivery instructions" htmlFor="i" className="sm:col-span-2"><Input id="i" value={f.instructions} onChange={set("instructions")} /></Field>
+          <div className="sm:col-span-2">
+            <LocationPicker value={loc} onChange={setLoc} label="Save current location" hint="Tap while you are at the customer's door." />
+          </div>
           <Field label="Custom price/can (₹)" htmlFor="pr" hint="Blank = your default"><Input id="pr" type="number" min={0} step="0.5" value={f.price} onChange={set("price")} /></Field>
           <Field label="Cans per day" htmlFor="d"><Input id="d" type="number" min={0} value={f.daily} onChange={set("daily")} /></Field>
           <Field label="Current cans (opening stock)" htmlFor="o"><Input id="o" type="number" min={0} value={f.opening} onChange={set("opening")} /></Field>
@@ -115,6 +133,12 @@ function RequestCard({ r, canManage }: { r: ConnectionRequest; canManage: boolea
             <p className="text-xs text-muted-foreground">{TYPE_LABEL[type]} · {r.contact_name}{r.phone ? ` · ${r.phone}` : ""}</p>
             <p className="text-sm">{r.address}</p>
             {r.delivery_instructions && <p className="text-xs text-muted-foreground">Note: {r.delivery_instructions}</p>}
+            {r.latitude != null && r.longitude != null && (
+              <button type="button" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary underline"
+                onClick={() => openExternal(directionsUrl(r.latitude!, r.longitude!))}>
+                <Navigation className="h-3 w-3" /> See location on map {formatAccuracy(r.location_accuracy_m)}
+              </button>
+            )}
             <p className="text-xs text-muted-foreground">
               {r.household_type ? `${householdLabel(r.household_type)} · ` : ""}{r.members_count ? `${r.members_count} people · ` : ""}
               about {r.daily_consumption} can{r.daily_consumption === 1 ? "" : "s"}/day · requested {formatDate(r.created_at)}

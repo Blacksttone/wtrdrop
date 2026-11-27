@@ -101,6 +101,10 @@ export interface Customer {
   account_id: string | null;
   branch_name: string | null;
   bill_to_customer_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_accuracy_m: number | null;
+  location_updated_at: string | null;
   created_at: string;
 }
 
@@ -422,6 +426,9 @@ export interface ConnectionRequest {
   daily_consumption: number;
   status: "pending" | "approved" | "rejected" | "cancelled";
   reason: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_accuracy_m: number | null;
   created_at: string;
   suppliers?: { business_name: string } | null;
   customer_accounts?: { name: string; account_type: AccountType } | null;

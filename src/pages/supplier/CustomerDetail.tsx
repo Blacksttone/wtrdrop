@@ -14,6 +14,7 @@ import { LevelPill } from "@/components/water/StockGauge";
 import { StatusBadge } from "@/components/water/StatusBadge";
 import { formatDate, formatDateTime, formatMoney, titleCase } from "@/lib/format";
 import { useAction } from "@/lib/hooks";
+import { LocationCard } from "@/components/water/LocationControls";
 import { useCustomerDeliveries, useCustomerSummary } from "@/lib/queries";
 import { rpc, supabase } from "@/lib/supabase";
 import type { Customer, Delivery, InventoryTransaction } from "@/types/db";
@@ -66,6 +67,32 @@ function BlockDialog({ customer, onClose }: { customer: Customer; onClose: () =>
   );
 }
 
+/** Other accounts of the same person with this supplier (e.g. their company and their home): billed separately. */
+function SameOwner({ customer }: { customer: Customer }) {
+  const others = useQuery({
+    queryKey: ["same-owner", customer.id], enabled: Boolean(customer.user_id),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("customers").select("id, customer_name, branch_name, account_id, customer_accounts(name, account_type)")
+        .eq("user_id", customer.user_id!).neq("id", customer.id);
+      if (error) throw error;
+      return (data ?? []) as unknown as { id: string; customer_name: string; branch_name: string | null; account_id: string | null; customer_accounts: { name: string; account_type: string } | null }[];
+    },
+  });
+  const rows = (others.data ?? []).filter((o) => o.account_id !== customer.account_id);
+  if (!rows.length) return null;
+  return (
+    <p className="rounded-lg border bg-card p-3 text-sm">
+      <b>Same owner also has:</b>{" "}
+      {rows.map((o, i) => (
+        <span key={o.id}>{i > 0 && ", "}<Link className="text-primary underline" to={`/supplier/customers/${o.id}`}>
+          {o.customer_accounts?.name ?? o.customer_name}{o.branch_name ? ` · ${o.branch_name}` : ""} ({o.customer_accounts?.account_type ?? "home"})
+        </Link></span>
+      ))}
+      <span className="text-muted-foreground"> — billed separately.</span>
+    </p>
+  );
+}
+
 export default function CustomerDetail() {
   const { id = "" } = useParams();
   const customer = useQuery({ queryKey: ["customer", id], queryFn: async () => {
@@ -115,6 +142,8 @@ export default function CustomerDetail() {
       )}
       <p className="text-sm text-muted-foreground">Household: <b className="text-foreground">{householdLabel(c.household_type)}</b>{c.members_count ? ` · ${c.members_count} members` : ""}</p>
       {c.delivery_instructions && <p className="rounded-lg bg-secondary p-3 text-sm"><b>Delivery instructions:</b> {c.delivery_instructions}</p>}
+      <SameOwner customer={c} />
+      <LocationCard customer={c} forSupplier />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Current stock" value={p?.stock_confirmed ? `${p.current_stock} cans` : "Unconfirmed"} hint={p && <LevelPill level={p.level} />} />
         <StatCard label="Runs out" value={p?.predicted_empty_date ? formatDate(p.predicted_empty_date, "d MMM") : "—"} hint={p?.avg_daily_consumption ? `${p.avg_daily_consumption} cans/day (${p.basis})` : "No usage data"} />
