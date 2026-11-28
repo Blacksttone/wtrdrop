@@ -11,6 +11,32 @@ import { siteUrl } from "@/lib/native";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
+/** Sends the signup confirmation email again (Supabase limits how often). */
+export function ResendConfirmation({ email, next }: { email: string; next?: string | null }) {
+  const [busy, setBusy] = React.useState(false);
+  const [wait, setWait] = React.useState(0);
+  React.useEffect(() => {
+    if (wait <= 0) return;
+    const t = setTimeout(() => setWait(wait - 1), 1000);
+    return () => clearTimeout(t);
+  }, [wait]);
+  const resend = async () => {
+    setBusy(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup", email: email.trim(), options: { emailRedirectTo: `${siteUrl()}${next ?? "/home"}` },
+    });
+    setBusy(false);
+    if (error) return toast.error(errorMessage(error));
+    toast.success(`Confirmation email sent to ${email.trim()}`);
+    setWait(60);
+  };
+  return (
+    <Button type="button" variant="outline" className="w-full" loading={busy} disabled={wait > 0 || !email.trim()} onClick={resend}>
+      {wait > 0 ? `Resend email (${wait}s)` : "Resend confirmation email"}
+    </Button>
+  );
+}
+
 function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen md:grid-cols-2">
@@ -41,6 +67,7 @@ export function Login() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [unconfirmed, setUnconfirmed] = React.useState(false);
   const next = params.get("next") || "/home";
   if (session) return <Navigate to={next} replace />;
 
@@ -49,7 +76,11 @@ export function Login() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
-    if (error) return toast.error(errorMessage(error));
+    if (error) {
+      const notConfirmed = /email not confirmed/i.test(error.message) || (error as { code?: string }).code === "email_not_confirmed";
+      setUnconfirmed(notConfirmed);
+      return toast.error(notConfirmed ? "Please verify your email first. Open the link we sent you." : errorMessage(error));
+    }
     navigate(next, { replace: true });
   }
 
@@ -64,6 +95,12 @@ export function Login() {
         </Field>
         <Button type="submit" className="w-full" size="lg" loading={loading}>Sign in</Button>
       </form>
+      {unconfirmed && (
+        <div className="mt-4 space-y-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+          <p><b>Email not verified yet.</b> Check your inbox (and Spam) for the Waterdrop email and tap the link.</p>
+          <ResendConfirmation email={email} next={params.get("next")} />
+        </div>
+      )}
       <div className="mt-4 flex justify-between text-sm">
         <Link to="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
         <Link to={`/signup${params.get("next") ? `?next=${encodeURIComponent(next)}` : ""}`} className="text-primary hover:underline">Create account</Link>
@@ -106,7 +143,8 @@ export function Signup() {
   if (sent) {
     return (
       <AuthShell title="Check your email" subtitle={`We sent a confirmation link to ${form.email}.`}>
-        <p className="text-sm text-muted-foreground">Open the link to activate your account, then continue setting up Waterdrop.</p>
+        <p className="text-sm text-muted-foreground">Open the link to activate your account, then sign in. Not there? Check Spam, or send it again.</p>
+        <div className="mt-4"><ResendConfirmation email={form.email} next={next} /></div>
         <Button asChild variant="outline" className="mt-6 w-full"><Link to="/login">Back to sign in</Link></Button>
       </AuthShell>
     );
