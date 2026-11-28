@@ -10,6 +10,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { useCustomerSummary } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { QuickConsumption } from "./QuickConsumption";
+import { StockCheckCard } from "./StockCheckCard";
 import { useCansWithCustomer } from "@/components/water/CanControls";
 
 export default function CustomerHome() {
@@ -35,6 +36,8 @@ export default function CustomerHome() {
           <ChevronRight className="h-5 w-5" />
         </Link>
       )}
+
+      <StockCheckCard customer={customer} current={p.stock_confirmed ? p.current_stock : 0} />
 
       {/* 1. How many cans do I have? */}
       <Card className="overflow-hidden">

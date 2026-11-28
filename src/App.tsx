@@ -1,5 +1,5 @@
 import {
-  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Smartphone, Truck, UserCog, Users, Receipt, Wallet,
+  Activity, BarChart3, Boxes, Building2, ClipboardList, CreditCard, FileText, LayoutDashboard, Package, Settings, Smartphone, Truck, UserCog, Users, Receipt, Wallet, Map as MapIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
@@ -59,6 +59,7 @@ const AdminActivity = lazy(() => Adm().then((m) => ({ default: m.AdminActivity }
 const AdminAppUpdates = lazy(() => import("./pages/admin/AppUpdates"));
 const AdminEarnings = lazy(() => import("./pages/admin/Earnings"));
 const WaterdropBill = lazy(() => import("./pages/supplier/WaterdropBill"));
+const CustomerMap = lazy(() => import("./pages/supplier/CustomerMap"));
 const PayCheckout = lazy(() => import("./pages/public/Pay").then((m) => ({ default: m.PayCheckout })));
 const PayDone = lazy(() => import("./pages/public/Pay").then((m) => ({ default: m.PayDone })));
 
@@ -68,6 +69,7 @@ const MANAGERS: Role[] = ["owner", "manager"];
 const supplierNav: (NavItem & { roles: Role[] })[] = [
   { to: "/supplier", label: "Dashboard", icon: LayoutDashboard, end: true, roles: ALL },
   { to: "/supplier/customers", label: "Customers", icon: Users, roles: ALL },
+  { to: "/supplier/map", label: "Map", icon: MapIcon, roles: ALL },
   { to: "/supplier/deliveries", label: "Deliveries", icon: Truck, roles: ALL },
   { to: "/supplier/orders", label: "Orders", icon: ClipboardList, roles: ALL },
   { to: "/supplier/inventory", label: "Inventory", icon: Boxes, roles: ALL },
@@ -228,6 +230,7 @@ export default function App() {
                 <Route path="reports" element={<Reports />} />
                 <Route path="team" element={<Team />} />
                 <Route path="waterdrop-bill" element={<WaterdropBill />} />
+                <Route path="map" element={<CustomerMap />} />
               </Route>
               <Route element={<RequireSupplierRole roles={["owner"]} />}>
                 <Route path="settings" element={<SupplierSettings />} />

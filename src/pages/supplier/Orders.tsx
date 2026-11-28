@@ -55,7 +55,9 @@ export default function SupplierOrders() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["orders", "supplier", supplier.id, tab],
     queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("*, customers(customer_name, address, phone)").eq("supplier_id", supplier.id).in("status", statuses).order("created_at", { ascending: false }).limit(300);
+      const { data, error } = await supabase.from("orders").select("*, customers(customer_name, address, phone)").eq("supplier_id", supplier.id).in("status", statuses)
+        // Open work: first come, first served. Completed: newest first.
+        .order("created_at", { ascending: tab !== "done" }).limit(300);
       if (error) throw error;
       return data as Order[];
     },
@@ -67,7 +69,7 @@ export default function SupplierOrders() {
 
   return (
     <div>
-      <PageHeader title="Orders" description="Accept orders, schedule deliveries, and record what you delivered." />
+      <PageHeader title="Orders" description="First come, first served: the oldest open order is at the top." />
       <div className="mb-4 inline-flex rounded-lg bg-muted p-1" role="tablist">
         {TABS.map((t) => (
           <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
@@ -78,11 +80,12 @@ export default function SupplierOrders() {
         <EmptyState icon={ClipboardList} title="No orders here" description="New customer orders appear instantly." />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((o) => (
-            <Card key={o.id}>
+          {data.map((o, i) => (
+            <Card key={o.id} className={tab !== "done" && i === 0 ? "ring-2 ring-primary" : undefined}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
+                    {tab !== "done" && <p className="text-xs font-bold text-primary">#{i + 1}{i === 0 ? " · do this first" : ""}</p>}
                     <Link to={`/supplier/customers/${o.customer_id}`} className="font-semibold hover:underline">{o.customers?.customer_name}</Link>
                     <p className="text-xs text-muted-foreground">{o.customers?.address}</p>
                   </div>

@@ -105,6 +105,7 @@ export interface Customer {
   longitude: number | null;
   location_accuracy_m: number | null;
   location_updated_at: string | null;
+  last_stock_check_at: string | null;
   created_at: string;
 }
 
@@ -131,6 +132,9 @@ export interface CustomerListRow {
   branch_name: string | null;
   bill_to_customer_id: string | null;
   cans_out: number;
+  latitude: number | null;
+  longitude: number | null;
+  last_stock_check_at: string | null;
 }
 
 export interface CustomerStock {
